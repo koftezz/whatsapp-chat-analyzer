@@ -42,7 +42,7 @@ st.write("""
 file = st.file_uploader("Pick a file")
 if file is not None:
     with tempfile.NamedTemporaryFile(mode="wb") as temp:
-        bytes_data = files.getvalue()
+        bytes_data = file.getvalue()
         temp.write(bytes_data)
         print(temp.name)
         parser = WhatsAppParser(temp.name)

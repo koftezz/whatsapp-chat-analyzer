@@ -10,6 +10,7 @@ import re
 import calmap
 import datetime
 import altair as alt
+import tempfile
 
 from matplotlib import ticker, pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap

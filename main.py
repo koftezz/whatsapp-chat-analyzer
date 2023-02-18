@@ -55,14 +55,7 @@ if file is not None:
     selected_authors = st.multiselect(
         "Choose authors of the group",
         df.author.unique().tolist())
-# selected_authors = ['Batuhan', 'Alperen Sever', 'Çağatay Çubukcu',
-#                     'Volkan Selim Cantürk', "Feyza Sayman",
-#                     "Elif Melis Efeoğlu",
-#                     "Aysima Kiriş",
-#                     "İzel Yılmaz",
-#                     "Exoticom 🐒"
-#
-#                     ]
+
     starter = st.button("Start")
     if starter:
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors='coerce')

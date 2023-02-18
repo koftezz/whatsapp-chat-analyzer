@@ -13,7 +13,6 @@ bleach==6.0.0
 blinker==1.5
 cachetools==5.3.0
 calmap==0.0.9
-certifi @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_477u68wvzm/croot/certifi_1671487773341/work/certifi
 cffi==1.15.1
 charset-normalizer==3.0.1
 chat-miner==0.3.0

@@ -40,9 +40,13 @@ st.write("""
 
 file = st.file_uploader("Pick a file")
 if file is not None:
-    parser = WhatsAppParser(file.name)
-    parser.parse_file()
-    df = parser.parsed_messages.get_df()
+    with tempfile.NamedTemporaryFile(mode="wb") as temp:
+        bytes_data = files.getvalue()
+        temp.write(bytes_data)
+        print(temp.name)
+        parser = WhatsAppParser(temp.name)
+        parser.parse_file()
+        df = parser.parsed_messages.get_df()
 # st.write(df)
 # parser = WhatsAppParser("./_chat 2.txt")
 # parser.parse_file()

@@ -38,7 +38,7 @@ lang = {"English": {"picture": "image omitted",
 st.write("""
          ## Whatsapp Group Chat Analyzer
          """)
-st.write("""
+st.info("""
 V0 2023-02-19: 
  - This does not save your chat file.
  - Note that it only supports English and Turkish right now.
@@ -47,6 +47,8 @@ V0 2023-02-19:
  - Sometimes whatsapp can have problems while exporting with date formats. 
  If there is an error after uploading, check your file date format, 
  there might be some inconsistency in date formatting. 
+ - It may take a while for around 2 minutes for 20mb of chat file on the 
+ server.
  - Known Issues: 
     - Activity by time of day: x axis
     - Smoothed Relative activity area timeseries plot: year start
@@ -58,17 +60,26 @@ V0 2023-02-19:
  https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
  their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
  for his great analysis.
+ - source: [koftezz](https://github.com/koftezz/whatsapp-chat-analyzer)
  """)
+
+
+@st.cache_data
+def read_file():
+    with tempfile.NamedTemporaryFile(mode="wb") as temp:
+        with st.spinner('Wait for it...'):
+            bytes_data = file.getvalue()
+            temp.write(bytes_data)
+            parser = WhatsAppParser(temp.name)
+            parser.parse_file()
+            df = parser.parsed_messages.get_df()
+    return df
+
 
 file = st.file_uploader("Upload WhatsApp chat file without media.")
 
 if file is not None:
-    with tempfile.NamedTemporaryFile(mode="wb") as temp:
-        bytes_data = file.getvalue()
-        temp.write(bytes_data)
-        parser = WhatsAppParser(temp.name)
-        parser.parse_file()
-        df = parser.parsed_messages.get_df()
+    df = read_file()
 
     selected_authors = st.multiselect(
         "Choose authors of the group",
@@ -172,6 +183,7 @@ if file is not None:
 
         st.dataframe(stats_overall(df=df))
 
+
         # Total messages sent stats
 
         def formatted_barh_plot(s,
@@ -219,6 +231,7 @@ if file is not None:
         plt.ylabel('')
         plt.tight_layout()
         st.pyplot(b)
+
 
         # Average message length by use
 

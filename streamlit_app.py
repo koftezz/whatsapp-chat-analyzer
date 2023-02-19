@@ -34,6 +34,17 @@ lang = {"English": {"picture": "image omitted",
                     "video": "video omitted"},
         "Turkish": {"picture": "görüntü dahil edilmedi",
                     "video": "video dahil edilmedi"}}
+st.set_page_config(
+    page_title="Whatsapp Group Chat Analyzer",
+    page_icon="🧊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://www.extremelycoolapp.com/help',
+        'Report a bug': "https://github.com/koftezz/whatsapp-chat-analyzer/issues",
+        'About': "# This is an Whatsapp Group Chat Analyzer!"
+    }
+)
 
 st.write("""
          ## Whatsapp Group Chat Analyzer
@@ -57,6 +68,8 @@ V0 2023-02-19:
     - Aggregate multiple people into one. Sometimes a user can have multi 
     numbers and we should give a change to see them as one single user.
     - Charts can be change by year via dropdown.
+    - Is conversation starter with a slider
+    - Add emoji support
  - Last but not least - Thanks to [chat-miner](
  https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
  their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
@@ -135,9 +148,8 @@ if file is not None:
         st.write(msg)
 
         # Basic summary of messages
-        st.write("""## Basic summary of messages\n
-        Conversation starter defined as a message sent at least 7 hours 
-        after the previous message on the thread
+        st.write("""## Basic summary of messages\nConversation starter 
+        defined \ as a message sent at least 7 hours after the previous message on the thread
         """)
         o = df.drop("hour", axis=1).groupby('author').mean().style.format({
             'words': '{:.2f}',

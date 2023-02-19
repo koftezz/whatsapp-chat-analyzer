@@ -1,24 +1,19 @@
-import matplotlib
 import streamlit as st
 import pandas as pd
 import numpy as np
 from chatminer.chatparsers import WhatsAppParser
 import seaborn as sns
-import os
-import warnings
-import re
-import calmap
 import datetime
 import altair as alt
 import tempfile
-
+import chatminer.visualizations as vis
 from matplotlib import ticker, pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import gaussian_filter
-from sklearn.metrics.pairwise import pairwise_distances
 
 
-# Set up some matplotlib style options to improve the aesthetics and size of plots
+# Set up some matplotlib style options to improve the aesthetics
+# and size of plots
 def set_custom_matplotlib_style():
     plt.style.use('seaborn-dark')
     plt.rcParams['figure.figsize'] = [10, 6.5]
@@ -34,32 +29,52 @@ def set_custom_matplotlib_style():
     return (None)
 
 
+# language settings
+lang = {"English": {"picture": "image omitted",
+                    "video": "video omitted"},
+        "Turkish": {"picture": "görüntü dahil edilmedi",
+                    "video": "video dahil edilmedi"}}
+
 st.write("""
-         ## Whatsapp Chat Analyzer
+         ## Whatsapp Group Chat Analyzer
          """)
+st.write("""
+V0 2023-02-19: 
+ - This does not save your chat file.
+ - Note that it only supports English and Turkish right now.
+ - Most of the charts are based on group chats but it works for dms too, 
+ some of the charts will be pointless but give it a shot.
+ - Sometimes whatsapp can have problems while exporting with date formats. 
+ - Known Issues: 
+    - Activity by time of day: x axis
+    - Smoothed Relative activity area timeseries plot: year start
+    - Activity by day of week: x axis
+ - Possible to-dos:
+    - Aggregate multiple people into one. Sometimes a user can have multi 
+    numbers and we should give a change to see them as one single user.
+ - Last but not least - Thanks to [chat-miner](
+ https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
+ their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
+ for his great analysis.
+ """)
 
+file = st.file_uploader("Upload WhatsApp chat file without media.")
 
-file = st.file_uploader("Pick a file")
 if file is not None:
     with tempfile.NamedTemporaryFile(mode="wb") as temp:
         bytes_data = file.getvalue()
         temp.write(bytes_data)
-        print(temp.name)
         parser = WhatsAppParser(temp.name)
         parser.parse_file()
         df = parser.parsed_messages.get_df()
-# st.write(df)
-# parser = WhatsAppParser("./_chat 2.txt")
-# parser.parse_file()
-# df = parser.parsed_messages.get_df()
-# df = pd.read_csv("./chat_yazma.csv")
-
-# if starter:
-    st.markdown(df.author.unique().tolist())
 
     selected_authors = st.multiselect(
         "Choose authors of the group",
         df.author.unique().tolist())
+
+    selected_lang = st.radio(
+        "What\'s your Whatsapp Language",
+        ("English", 'Turkish'))
 
     starter = st.button("Start")
     if starter:
@@ -77,9 +92,10 @@ if file is not None:
         df.loc[df.is_link == 1, 'msg_length'] = 0
 
         # Deal with multimedia messages to flag them and set the text to null
-        df['is_picture'] = (df.message == 'görüntü dahil edilmedi') * 1
-        df.loc[df.is_picture == 1, 'message'] = np.nan
-        df['is_video'] = (df.message == 'video dahil edilmedi') * 1
+
+        df['is_image'] = (df.message == lang[selected_lang]["picture"]) * 1
+        df.loc[df.is_image == 1, 'message'] = np.nan
+        df['is_video'] = (df.message == lang[selected_lang]["video"]) * 1
         df.loc[df.is_video == 1, 'message'] = np.nan
 
         # Filter out rows with no known author or phone numbers as authors
@@ -87,28 +103,35 @@ if file is not None:
                                          expand=False).isnull() | df.author.isnull())]
 
         # Add field to flag the start of a new conversation
-        # Conversation starter defined as a message sent at least 12 hours after the previous message on the thread
+        # Conversation starter defined as a message sent at least 7 hours
+        # after the previous message on the thread
         df['is_conversation_starter'] = ((df.timestamp - df.timestamp.shift(
             1)) > pd.Timedelta('7 hours')) * 1
 
-        # Set up colors to use for each author to keep them consistent across the analysis
+        # Set up colors to use for each author to
+        # keep them consistent across the analysis
         author_list = df.groupby('author').size().index.tolist()
-        author_color_lookup = {author: f'C{n}' for n, author in enumerate(author_list)}
+        author_color_lookup = {author: f'C{n}' for n, author in
+                               enumerate(author_list)}
         author_color_lookup['Group total'] = 'k'
 
-        msg = f"{len(df)} total messages from {len(df.author.unique())} people, " \
+        msg = f"{len(df)} total messages from {len(df.author.unique())}  " \
+              f"people, " \
               f"from {df.date.min()} to {df.date.max()}"
         st.write(msg)
 
         # Basic summary of messages
-        st.write("## Basic summary of messages")
+        st.write("""## Basic summary of messages\n
+        Conversation starter defined as a message sent at least 7 hours 
+        after the previous message on the thread
+        """)
         o = df.drop("hour", axis=1).groupby('author').mean().style.format({
             'words': '{:.2f}',
             'letters': '{:.1f}',
             'msg_length': '{:.1f}',
             'is_link': '{:.2%}',
             'is_conversation_starter': '{:.2%}',
-            'is_picture': '{:.2%}',
+            'is_image': '{:.2%}',
             'is_video': '{:.2%}'}).background_gradient(axis=0)
         st.dataframe(o)
 
@@ -117,9 +140,10 @@ if file is not None:
 
 
         def stats_overall(df: pd.DataFrame):
-            temp = df.loc[df["is_picture"] == 1]
-            o1 = pd.DataFrame(temp.groupby("author")["is_picture"].sum() / temp[
-                "is_picture"].sum()).reset_index()
+            temp = df.loc[df["is_image"] == 1]
+            o1 = pd.DataFrame(
+                temp.groupby("author")["is_image"].sum() / temp[
+                    "is_image"].sum()).reset_index()
 
             temp = df.loc[df["is_video"] == 1]
             o2 = pd.DataFrame(temp.groupby("author")["is_video"].sum() / temp[
@@ -133,18 +157,18 @@ if file is not None:
             o4 = pd.DataFrame(
                 temp.groupby("author")["is_conversation_starter"].sum() / temp[
                     "is_conversation_starter"].sum()).reset_index()
-            o1 = pd.merge(o1, o2, on=["author"], how="left").fillna({"is_video": 0})
+            o1 = pd.merge(o1, o2, on=["author"], how="left").fillna(
+                {"is_video": 0})
             o1 = pd.merge(o1, o3, on=["author"], how="left")
             o1 = pd.merge(o1, o4, on=["author"], how="left")
             return o1.style.format({
                 'is_link': '{:.2%}',
                 'is_conversation_starter': '{:.2%}',
-                'is_picture': '{:.2%}',
+                'is_image': '{:.2%}',
                 'is_video': '{:.2%}'}).background_gradient(axis=0)
 
 
         st.dataframe(stats_overall(df=df))
-
 
         # Total messages sent stats
 
@@ -158,12 +182,14 @@ if file is not None:
             if sort_values:
                 s = s.sort_values()
             s.plot(kind='barh',
-                   color=s.index.to_series().map(author_color_lookup).fillna('grey'),
+                   color=s.index.to_series().map(author_color_lookup).fillna(
+                       'grey'),
                    width=width,
                    **kwargs)
             if color_labels:
                 for color, tick in zip(
-                        s.index.to_series().map(author_color_lookup).fillna('grey'),
+                        s.index.to_series().map(author_color_lookup).fillna(
+                            'grey'),
                         plt.gca().yaxis.get_major_ticks()):
                     tick.label1.set_color(color)  # set the color property
             if pct_axis:
@@ -177,7 +203,7 @@ if file is not None:
                 plt.gca().xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
 
-            return (plt.gca())
+            return plt.gca()
 
 
         st.write("## Number of Messages Sent By Author")
@@ -192,28 +218,31 @@ if file is not None:
         plt.tight_layout()
         st.pyplot(b)
 
-
         # Average message length by use
-
 
         def activity(df: pd.DataFrame):
             distinct_dates = df[["date"]].drop_duplicates()
             distinct_authors = df[["author"]].drop_duplicates()
             distinct_authors['key'] = 1
             distinct_dates['key'] = 1
-            distinct_dates = pd.merge(distinct_dates, distinct_authors, on="key").drop(
+            distinct_dates = pd.merge(distinct_dates, distinct_authors,
+                                      on="key").drop(
                 "key", 1)
             activity = pd.DataFrame(
-                df.groupby(["author", "date"])["words"].nunique()).reset_index()
-            activity["start_date"] = activity.groupby(["author"])["date"].transform(
+                df.groupby(["author", "date"])[
+                    "words"].nunique()).reset_index()
+            activity["start_date"] = activity.groupby(["author"])[
+                "date"].transform(
                 "min")
             activity["is_active"] = np.where(activity['words'] > 0, 1, 0)
-            distinct_dates = pd.merge(distinct_dates, activity, on=["date", "author"],
+            distinct_dates = pd.merge(distinct_dates, activity,
+                                      on=["date", "author"],
                                       how="left")
             distinct_dates["max_date"] = df.date.max()
             distinct_dates[['max_date', 'start_date']] = distinct_dates[
                 ['max_date', 'start_date']].apply(pd.to_datetime)
-            distinct_dates["date_diff"] = (distinct_dates['max_date'] - distinct_dates[
+            distinct_dates["date_diff"] = (
+                    distinct_dates['max_date'] - distinct_dates[
                 'start_date']).dt.days
             o = distinct_dates.groupby("author").agg(
                 {"is_active": "sum", "date_diff": "max"})
@@ -231,10 +260,15 @@ if file is not None:
         st.dataframe(activity(df=df))
 
 
-        # Function to create bespoke linear segmented color map.
-        # Will be useful to create colormaps for each user consistent with their colour scheme
-
         def create_colormap(colors=['w', 'g'], n_bins=256):
+            """
+             Function to create bespoke linear segmented color map.
+            Will be useful to create colormaps for each user
+            consistent with their colour scheme
+            :param colors:
+            :param n_bins:
+            :return:
+            """
             n_bins = 256  # Discretizes the interpolation into bins
             cmap_name = 'temp_cmap'
 
@@ -250,10 +284,11 @@ if file is not None:
                                                                'timestamp']).first().unstack(
             level=0).resample('D').sum().msg_length.fillna(0)
 
-        smoothed_daily_activity_df = pd.DataFrame(gaussian_filter(daily_activity_df,
-                                                                  (6, 0)),
-                                                  index=daily_activity_df.index,
-                                                  columns=daily_activity_df.columns)
+        smoothed_daily_activity_df = pd.DataFrame(
+            gaussian_filter(daily_activity_df,
+                            (6, 0)),
+            index=daily_activity_df.index,
+            columns=daily_activity_df.columns)
         # fig, ax = plt.subplots()
         # subplots = daily_activity_df.plot(figsize=[8,2*len(df.author.unique())],
         #                         subplots=True, sharey=True, lw=0.3, label=None)
@@ -288,11 +323,12 @@ if file is not None:
         ## Smoothed Relative activity area timeseries plot
         Relative activity timeseries - 100% stacked area plot
         """)
-        o = smoothed_daily_activity_df.div(smoothed_daily_activity_df.sum(axis=1),
-                                           axis=0)
+        o = smoothed_daily_activity_df.div(
+            smoothed_daily_activity_df.sum(axis=1),
+            axis=0)
         st.area_chart(o)
 
-        # Timeseries : Activity by day of week
+        # Timeseries: Activity by day of week
         st.write("""
         ## Activity by day of week
         0 - Monday
@@ -306,16 +342,19 @@ if file is not None:
         #               "Sunday"])
         st.line_chart(o)
 
-        # Timeseries : Activity by time of day
+        # Timeseries: Activity by time of day
         st.write("""
         ## Activity by time of day
         """)
         a = df.groupby(
-            [df.timestamp.dt.time, df.author]).msg_length.sum().unstack().fillna(0)
+            [df.timestamp.dt.time,
+             df.author]).msg_length.sum().unstack().fillna(0)
         a = a.reindex(
-            [datetime.time(i, j) for i in range(24) for j in range(60)]).fillna(0)
+            [datetime.time(i, j) for i in range(24) for j in
+             range(60)]).fillna(0)
 
-        # Temporarily add the tail at the start and head and the end of the data frame for the gaussian smoothing
+        # Temporarily add the tail at the start and head and the end of the
+        # data frame for the gaussian smoothing
         # to be continuous around midnight
         a = pd.concat([a.tail(120), a, a.head(120)])
 
@@ -362,12 +401,14 @@ if file is not None:
                     cbar=False))
 
         plt.title('Reponse Martix\n ')
-        plt.gca().text(.5, 1.04, "Author of previous message when a message is sent*",
+        plt.gca().text(.5, 1.04,
+                       "Author of previous message when a message is sent*",
                        ha='center', va='center', size=12,
                        transform=plt.gca().transAxes);
         plt.gca().set_yticklabels(plt.gca().get_yticklabels(), va='center',
                                   minor=False)
-        plt.gcf().text(0, 0, "*Excludes messages to self within 3 mins", va='bottom')
+        plt.gcf().text(0, 0, "*Excludes messages to self within 3 mins",
+                       va='bottom')
         plt.tight_layout()
         st.pyplot(fig)
 
@@ -403,7 +444,8 @@ if file is not None:
         plt.ylabel('')
         plt.xlabel('Response time (Mins)')
 
-        plt.gcf().text(0, 0, "Excludes messages to self within 3 mins", va='bottom')
+        plt.gcf().text(0, 0, "Excludes messages to self within 3 mins",
+                       va='bottom')
         plt.tight_layout()
         st.pyplot(fig)
 
@@ -442,3 +484,48 @@ if file is not None:
         year_content = year_content.sort_values('YearMonth')
         year_content = year_content.set_index("YearMonth")
         st.bar_chart(year_content)
+
+        st.write("""
+                ## Sunburst: Message count per daytime
+                Left chart shows the realized values.
+                Right chart shows the adjusted values based on max message 
+                count.
+                """)
+
+        fig, ax = plt.subplots(1, 2, figsize=(7, 3),
+                               subplot_kw={'projection': 'polar'})
+        ax[0] = vis.sunburst(df, highlight_max=True, isolines=[2500, 5000],
+                             isolines_relative=False, ax=ax[0])
+        ax[1] = vis.sunburst(df, highlight_max=False, isolines=[0.5, 1],
+                             color='C1', ax=ax[1])
+        st.pyplot(fig)
+
+        st.write("""
+               ## Radarchart: Message count per weekday
+                """)
+        if not vis.is_radar_registered():
+            vis.radar_factory(7, frame="polygon")
+        fig, ax = plt.subplots(1, 1, figsize=(7, 3),
+                               subplot_kw={'projection': 'radar'})
+        ax = vis.radar(df, ax=ax)
+        fig.tight_layout()
+        st.pyplot(fig)
+
+        st.write(""" ## Heatmap: Message count per day """)
+        current_year = df.year.max()
+        last_year = current_year - 1
+        if df.loc[df["year"] == last_year].shape[0] > 0:
+            fig, ax = plt.subplots(2, 1, figsize=(9, 3))
+            ax[0] = vis.calendar_heatmap(df, year=last_year,
+                                         monthly_border=True,
+                                         cmap='Oranges',
+                                         ax=ax[0])
+            ax[1] = vis.calendar_heatmap(df, year=current_year, linewidth=0,
+                                         monthly_border=True, ax=ax[1])
+            ax[0].set_title(last_year)
+            ax[1].set_title(current_year)
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(9, 3))
+            ax[0] = vis.calendar_heatmap(df, year=current_year, linewidth=0,
+                                         monthly_border=True, ax=ax[1])
+        st.pyplot(fig)

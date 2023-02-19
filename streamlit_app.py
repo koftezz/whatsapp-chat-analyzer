@@ -56,6 +56,7 @@ V0 2023-02-19:
  - Possible to-dos:
     - Aggregate multiple people into one. Sometimes a user can have multi 
     numbers and we should give a change to see them as one single user.
+    - Charts can be change by year via dropdown.
  - Last but not least - Thanks to [chat-miner](
  https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
  their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
@@ -67,7 +68,7 @@ V0 2023-02-19:
 @st.cache_data
 def read_file():
     with tempfile.NamedTemporaryFile(mode="wb") as temp:
-        with st.spinner('Wait for it...'):
+        with st.spinner('This may take a while. Wait for it...'):
             bytes_data = file.getvalue()
             temp.write(bytes_data)
             parser = WhatsAppParser(temp.name)
@@ -544,3 +545,5 @@ if file is not None:
             ax[0] = vis.calendar_heatmap(df, year=current_year, linewidth=0,
                                          monthly_border=True, ax=ax[1])
         st.pyplot(fig)
+
+        st.cache_data.clear()

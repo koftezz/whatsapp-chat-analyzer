@@ -44,7 +44,7 @@ st.set_page_config(
         'About': "# This is an Whatsapp Group Chat Analyzer!"
     }
 )
-
+st.cache_data.clear()
 st.write("""
          ## Whatsapp Group Chat Analyzer
          """)

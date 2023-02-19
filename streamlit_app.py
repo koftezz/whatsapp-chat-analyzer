@@ -78,7 +78,7 @@ V0 2023-02-19:
  """)
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def read_file(file):
     with tempfile.NamedTemporaryFile(mode="wb") as temp:
         with st.spinner('This may take a while. Wait for it...'):

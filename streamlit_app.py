@@ -114,7 +114,9 @@ def app():
 
                     return plt.gca()
 
-                msg = f"{len(df)} total messages from {len(df.author.unique())}  " \
+                msg = f"## Overall Summary\n" \
+                      f"{len(df)} total messages from" \
+                      f" {len(df.author.unique())}  " \
                       f"people " \
                       f"from {df.date.min()} to {df.date.max()}."
                 st.write(msg)

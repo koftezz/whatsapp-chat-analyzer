@@ -295,7 +295,7 @@ def relative_activity_ts(df: pd.DataFrame):
 
 def activity_day_of_week_ts(df: pd.DataFrame):
     o = df.groupby(
-        [df.timestamp.dt.dayofweek, df.author]).msg_length.sum(
+        [df.timestamp.dt.dayofweek, df.author]).msg_length.mean(
 
     ).unstack().fillna(0)
     # o = o.reindex(["Monday", "Tuesday", "Wednesday",
@@ -405,12 +405,17 @@ def year_month(df: pd.DataFrame):
 
 
 def radar_chart(df: pd.DataFrame):
-    if not vis.is_radar_registered():
-        vis.radar_factory(7, frame="polygon")
-    fig, ax = plt.subplots(1, 1, figsize=(7, 3),
+    fig, ax = plt.subplots(1, 2, figsize=(7, 3),
                            subplot_kw={'projection': 'radar'})
-    ax = vis.radar(df, ax=ax)
-    fig.tight_layout()
+    current_year = df.year.max()
+    last_year = current_year - 1
+    ax[0] = vis.radar(df.loc[df["year"] == last_year], ax=ax[0])
+    ax[1] = vis.radar(df.loc[df["year"] == current_year], ax=ax[1], color='C1',
+                      alpha=0)
+    ax[0].set_title(last_year)
+    ax[1].set_title(current_year)
+    plt.tight_layout()
+
     return fig
 
 

@@ -4,15 +4,12 @@ import numpy as np
 from chatminer.chatparsers import WhatsAppParser
 import seaborn as sns
 import datetime
-import altair as alt
 import tempfile
 import chatminer.visualizations as vis
-from matplotlib import ticker, pyplot as plt
+from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import gaussian_filter
 import math
-import emoji
-import regex
 from collections import Counter
 
 

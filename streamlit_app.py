@@ -1,4 +1,5 @@
 from helpers import *
+import altair as alt
 
 st.set_page_config(
     page_title="Whatsapp Group Chat Analyzer",

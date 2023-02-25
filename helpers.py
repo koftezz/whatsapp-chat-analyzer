@@ -7,9 +7,11 @@ import datetime
 import tempfile
 import chatminer.visualizations as vis
 from matplotlib import pyplot as plt
+from matplotlib import ticker
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import gaussian_filter
 import math
+import emoji
 from collections import Counter
 
 
@@ -262,7 +264,8 @@ def stats_overall(df: pd.DataFrame):
 
 def smoothed_daily_activity(df: pd.DataFrame):
     df["year"] = df["timestamp"].dt.year
-    daily_activity_df = df.loc[df["year"] > 2018].groupby(
+    min_year = df.year.max() - 5
+    daily_activity_df = df.loc[df["year"] > min_year].groupby(
         ['author',
          'timestamp']).first().unstack(
         level=0).resample('D').sum().msg_length.fillna(0)
@@ -340,7 +343,8 @@ def create_colormap(colors=['w', 'g'], n_bins=256):
 
 
 def relative_activity_ts(df: pd.DataFrame):
-    daily_activity_df = df.loc[df["year"] > 2021].groupby(
+    min_year = df.year.max() - 3
+    daily_activity_df = df.loc[df["year"] > min_year].groupby(
         ['author', 'timestamp']).first().unstack(level=0).resample(
         'D').sum().msg_length.fillna(0)
     smoothed_daily_activity_df = pd.DataFrame(
@@ -355,7 +359,7 @@ def relative_activity_ts(df: pd.DataFrame):
 
 def activity_day_of_week_ts(df: pd.DataFrame):
     o = df.groupby(
-        [df.timestamp.dt.dayofweek, df.author]).msg_length.mean(
+        [df.timestamp.dt.dayofweek, df.author]).msg_length.sum(
 
     ).unstack().fillna(0)
     # o = o.reindex(["Monday", "Tuesday", "Wednesday",
@@ -384,6 +388,10 @@ def activity_time_of_day_ts(df: pd.DataFrame):
 
     # Remove the points temporarily added from the ends
     b = b.iloc[120:-120]
+
+    b = b.reset_index()
+    b = b.rename_axis(None, axis=1)
+    b['timestamp'] = pd.to_datetime(b['timestamp'].astype(str))
 
     # o = b.reset_index()
     # o["hour"] = o["timestamp"].apply(lambda x: x.hour)

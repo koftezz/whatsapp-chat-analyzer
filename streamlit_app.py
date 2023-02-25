@@ -15,34 +15,42 @@ st.cache_resource.clear()
 st.write("""
          ## Whatsapp Group Chat Analyzer
          """)
-st.info("""
-V0.1 2023-02-21:
-### What's New?
-- GIF, Sticker, Audio Message Statistics.
 
-### About
- - This does not save your chat file.
- - Note that it only supports English and Turkish right now.
- - Most of the charts are based on group chats but it works for dms too, 
- some of the charts will be pointless but give it a shot.
- - Sometimes whatsapp can have problems while exporting with date formats. 
- If there is an error after uploading, check your file date format, 
- there might be some inconsistency in date formatting. 
- - It may take a while for around 2 minutes for 20mb of chat file on the 
- server.
- - Possible to-dos:
-    - Aggregate multiple people into one. Sometimes a user can have multi 
-    numbers and we should give a chance to see them as one single user.
-    - Charts can be change by year via dropdown.
-    - Is conversation starter with a slider
-    - Add emoji support
-    - Exportable pdf
- - Last but not least - Thanks to [chat-miner](
- https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
- their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
- for his great analysis.
- - source: [koftezz](https://github.com/koftezz/whatsapp-chat-analyzer)
- """)
+with st.expander("About this app"):
+    st.markdown(
+        """
+    V1.0 2023-02-25:
+    ### What's New?
+    - GIF, Sticker, Audio, Deleted, Location Message Statistics.
+    - Maps for shared location
+    - Talkativeness & Messaging Trends
+    - General Formatting & Chart Redesign
+    
+    ### Info
+     - This does not save your chat file.
+     - Note that it only supports English and Turkish right now.
+     - Most of the charts are based on group chats but it works for dms too, 
+     some of the charts will be pointless but give it a shot.
+     - Sometimes whatsapp can have problems while exporting with date formats. 
+     If there is an error after uploading, check your file date format, 
+     there might be some inconsistency in date formatting. 
+     - It may take a while for around 2 minutes for 20mb of chat file on the 
+     server.
+     - Possible to-dos:
+        - Aggregate multiple people into one. Sometimes a user can have multi 
+        numbers and we should give a chance to see them as one single user.
+        - Charts can be change by year via dropdown.
+        - Add emoji support
+        - Exportable pdf
+        - More prescriptive
+        - Demo chat
+     - Last but not least - Thanks to [chat-miner](
+     https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
+     their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
+     for his great analysis.
+     - source: [koftezz](https://github.com/koftezz/whatsapp-chat-analyzer)
+    """
+    )
 
 
 def app():
@@ -59,16 +67,18 @@ def app():
                 selected_lang = st.radio(
                     "What\'s your Whatsapp Language?",
                     ("English", 'Turkish'))
+
                 submit_button = st.form_submit_button(label='Submit')
                 if submit_button and len(selected_authors) < 2:
                     st.warning("You must select at least 2 authors!",
                                icon="⚠️")
+        if submit_button:
+                df, locations = preprocess_data(df=df,
+                                                selected_lang=selected_lang,
+                                                selected_authors=selected_authors)
 
-            if submit_button:
-
-                df = preprocess_data(df=df,
-                                     selected_lang=selected_lang,
-                                     selected_authors=selected_authors)
+                with st.expander("Show the `Chat` dataframe"):
+                    st.dataframe(df)
 
                 # Set up colors to use for each author to
                 # keep them consistent across the analysis
@@ -123,9 +133,14 @@ def app():
 
                 # Basic summary of messages
                 st.write(
-                    "## Basic summary of messages\nConversation starter \n"
-                    "defined as a message sent at least 7 hours after the"
-                    " previous message on the thread\n")
+                    "## Basic summary of messages")
+                with st.expander("More info"):
+                    st.write("All the "
+                             "statistics are average of the respective "
+                             "columns. For Ex: Link means average of "
+                             "messages sent with link.\n- Conversation starter \n"
+                             "defined as a message sent at least 7 hours after the"
+                             " previous message on the thread\n")
                 o = basic_stats(df=df)
                 st.dataframe(o, use_container_width=True)
 
@@ -134,19 +149,26 @@ def app():
                 o = stats_overall(df=df)
                 st.dataframe(o)
 
+                st.write("## Talkativeness & Messaging Trends")
+                author_df = trend_stats(df=df)
+                st.dataframe(author_df, use_container_width=True)
+
                 # Total messages sent stats
                 st.write("## Number of Messages Sent By Author")
-                b = plt.figure(figsize=[10 * .75, 6 * .75])
-                # Total messages by user
-                plt.subplot(1, 2, 1)
-                df.groupby('author').size().pipe(formatted_barh_plot,
-                                                 thousands_separator=True)
-                plt.title('Number of messages sent')
-                plt.xlabel('Number of messages sent')
-                plt.ylabel('')
-                plt.tight_layout()
-                st.pyplot(b)
-
+                o = pd.DataFrame(
+                    df.groupby('author')["message"].count()).reset_index()
+                c = alt.Chart(o).mark_bar().encode(
+                    x=alt.X("author", sort="-y"),
+                    y=alt.Y('message:Q'),
+                    color='author',
+                )
+                rule = alt.Chart(o).mark_rule(color='red').encode(
+                    y='mean(message):Q'
+                )
+                c = (c + rule).properties(width=600, height=600,
+                                          title='Number of messages sent'
+                                          )
+                st.altair_chart(c)
                 # Average message length by use
                 st.write("""
                 ## Activity Stats by Author
@@ -154,20 +176,43 @@ def app():
                 It shows the percent of an author who sent at least a message in a random 
                 day with active conversation.
                 """)
-                st.dataframe(activity(df=df))
+                o = activity(df=df)
+                c = alt.Chart(o).mark_bar().encode(
+                    x=alt.X("author:N", sort="-y"),
+                    y=alt.Y('Activity %:Q'),
+                    color='author',
+                )
+                rule = alt.Chart(o).mark_rule(color='red').encode(
+                    y='mean(Activity %):Q'
+                )
+                c = (c + rule).properties(width=600, height=600,
+                                          title='Activity % by author'
+                                          )
+                st.altair_chart(c)
 
                 # Smoothed stacked activity area timeseries plot
-                st.write("""
-                ## Smoothed stacked activity area timeseries plot
-                """)
+                st.write("""## Activity Area Plot """)
+                with st.expander("More info"):
+                    st.info("It is an absolute plot which we can see who has "
+                            "been more active in terms of total messsages."
+                            " It is smoothed with gaussian "
+                            "distribution since the data is likely to be "
+                            "noisy.")
                 smoothed_daily_activity_df = smoothed_daily_activity(df=df)
                 st.area_chart(smoothed_daily_activity_df)
 
                 # Relative activity timeseries - 100% stacked area plot
                 st.write("""
-                ## Smoothed Relative activity area timeseries plot
-                Relative activity timeseries - 100% stacked area plot
+                ## Relative Activity Area Plot
                 """)
+                with st.expander("More info"):
+                    st.info("It is a relative plot which we can see who has "
+                            "been more active."
+                            "with respect to each other. It basically shows "
+                            "the activity percentage of each author changes "
+                            "over time. It is smoothed with gaussian "
+                            "distribution since the data is likely to be "
+                            "noisy.")
                 o = relative_activity_ts(df=df)
                 st.area_chart(o)
 
@@ -192,12 +237,25 @@ def app():
                 st.write("""
                 ## Response Matrix
                 """)
+                with st.expander("More info"):
+                    st.info("This does not consider the content of the "
+                            "message. It is based on who is the previous "
+                            "sender of the message. Self sonsecutive messages "
+                            "within 3 minutes are excluded."
+                            "")
                 fig = response_matrix(df=df)
                 st.pyplot(fig)
 
                 st.write("""
                 ## Response Time Distribution
                 """)
+                with st.expander("More info"):
+                    st.info("Self consecutive messages "
+                            "within 3 minutes are excluded."
+                            "Median response time shows that author X "
+                            "responded the messages at least y mins later, "
+                            "half of the time."
+                            "")
 
                 # Response time
                 prev_msg_lt_180_seconds = (df.timestamp - df.timestamp.shift(
@@ -212,9 +270,9 @@ def app():
                  [~(prev_msg_lt_180_seconds & same_prev_author)]
                  .groupby(df.author)
                  .apply(sns.kdeplot))
-                plt.title('Response time distribution')
-                plt.ylabel('Relative frequency')
-                plt.xlabel('Response time (Mins)')
+                plt.title('Response time distribution', fontsize=8)
+                plt.ylabel('Relative frequency', fontsize=8)
+                plt.xlabel('Response time (Mins)', fontsize=8)
                 locs, ticks = plt.xticks()
                 plt.xticks(locs, [f"$10^{{{int(loc)}}}$" for loc in locs])
 
@@ -226,45 +284,69 @@ def app():
                  .groupby(df.author)
                  .median()
                  .pipe(formatted_barh_plot))
-                plt.title('Median response time')
+                plt.title('Median response time', fontsize=8)
                 plt.ylabel('')
-                plt.xlabel('Response time (Mins)')
+                plt.xlabel('Response time (Mins)', fontsize=8)
 
-                plt.gcf().text(0, 0, "Excludes messages to self within 3 mins",
-                               va='bottom')
+                # plt.gcf().text(0, 0, "Excludes messages to self within 3 mins",
+                #                va='bottom')
                 plt.tight_layout()
                 st.pyplot(fig)
 
                 max_spammer, max_spam = spammer(df=df)
                 st.write("""
                 ## Who is the spammer?
-                The most spam is from %s with %d consecutive messages""" % (
+                The most spam is from :red[%s] with %d consecutive 
+                messages.""" % (
                     max_spammer, max_spam))
 
                 st.write("""
                 ## Year x Month Total Messages
                 """)
                 year_content = year_month(df=df)
-                st.bar_chart(year_content)
+                c = alt.Chart(year_content).mark_bar().encode(
+                    x=alt.X("YearMonth:O", ),
+                    y=alt.Y('message:Q'),
+                    color='year:O',
+                )
+                rule = alt.Chart(year_content).mark_rule(color='red').encode(
+                    y='mean(message):Q'
+                )
+                c = (c + rule).properties(width=1000, height=600,
+                                          title='Total Number of messages '
+                                                'sent over years'
+                                          )
+                st.altair_chart(c)
 
                 st.write("""
                         ## Sunburst: Message count per daytime
-                        Left chart shows the realized values.
-                        Right chart shows the adjusted values based on max message 
-                        count.
                         """)
+                with st.expander("More info"):
+                    st.info("- Left chart shows the realized values."
+                            "\n- Right chart shows the adjusted values based "
+                            "on "
+                            "max message count.")
                 fig = sunburst(df=df)
                 st.pyplot(fig)
 
-                st.write("""
-                       ## Radarchart: Message count per weekday
-                        """)
-                fig = radar_chart(df=df)
-                st.pyplot(fig)
+                # st.write("""
+                ## Radarchart: Message count per weekday
+                # """)
+                # fig = radar_chart(df=df)
+                # st.pyplot(fig)
 
                 st.write(""" ## Heatmap: Message count per day """)
                 fig = heatmap(df=df)
                 st.pyplot(fig)
+
+                if locations.shape[0] > 0:
+                    st.write(""" ## Map of Locations""")
+                    with st.expander("More info"):
+                        st.info("This map shows all the locations which are "
+                                "sent by the authors via whatsapp. The "
+                                "latitude and Longitude values are extracted "
+                                "from google maps.")
+                    st.map(locations)
 
                 st.cache_data.clear()
                 st.cache_resource.clear()

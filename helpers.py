@@ -10,7 +10,6 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import gaussian_filter
 import math
-import emoji
 from collections import Counter
 
 

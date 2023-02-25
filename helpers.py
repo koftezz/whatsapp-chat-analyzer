@@ -4,12 +4,14 @@ import numpy as np
 from chatminer.chatparsers import WhatsAppParser
 import seaborn as sns
 import datetime
-import altair as alt
 import tempfile
 import chatminer.visualizations as vis
-from matplotlib import ticker, pyplot as plt
+from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import gaussian_filter
+import math
+import emoji
+from collections import Counter
 
 
 def set_custom_matplotlib_style():
@@ -47,13 +49,19 @@ def preprocess_data(df: pd.DataFrame,
                         "video": "video omitted",
                         "gif": "GIF omitted",
                         "audio": "audio omitted",
-                        "sticker": "sticker omitted"
+                        "sticker": "sticker omitted",
+                        "deleted": ["This message was deleted.",
+                                    "You deleted this message."],
+                        "location": "Location https://"
                         },
             "Turkish": {"picture": "görüntü dahil edilmedi",
                         "video": "video dahil edilmedi",
                         "gif": "GIF dahil edilmedi",
                         "audio": "ses dahil edilmedi",
-                        "sticker": "Çıkartma dahil edilmedi"}}
+                        "sticker": "Çıkartma dahil edilmedi",
+                        "deleted": ["Bu mesaj silindi.",
+                                    "Bu mesajı sildiniz."],
+                        "location": "Konum https://"}}
 
     df["timestamp"] = pd.to_datetime(df["timestamp"],
                                      errors='coerce')
@@ -61,13 +69,26 @@ def preprocess_data(df: pd.DataFrame,
     df = df.loc[df["author"].isin(selected_authors)]
     df = df.sort_values(["timestamp"])
 
+    df["is_location"] = (df.message.str.contains('maps.google') == True) * 1
+    locations = df.loc[df["is_location"] == 1]
+    df.loc[df.is_location == 1, 'message'] = np.nan
+
+    if locations.shape[0] > 0:
+        locs = locations["message"].str.split(" ", expand=True)
+        locs[1] = locs[1].str[27:]
+        locs = locs[1].str.split(",", expand=True)
+        locs = locs.rename(columns={0: "lat", 1: "lon"})
+        locs = locs.loc[(locs["lat"] != "") & (locs["lon"] != "") \
+                        & (~locs["lat"].isna()) & (~locs["lon"].isna())]
+        locations = locs[["lat", "lon"]].astype(float).drop_duplicates()
+
     # Deal with links (URLS) as messages
     df['is_link'] = ~df.message.str.extract('(https?:\S*)',
                                             expand=False).isnull() * 1
 
     # Extract message length
     df['msg_length'] = df.message.str.len()
-    df.loc[df.is_link == 1, 'msg_length'] = 0
+    df.loc[df.is_link == 1, 'msg_length'] = np.nan
 
     # Deal with multimedia messages to flag them and
     # set the text to null
@@ -90,6 +111,18 @@ def preprocess_data(df: pd.DataFrame,
         "audio"]) * 1
     df.loc[df.is_video == 1, 'message'] = np.nan
 
+    df['is_deleted'] = (df.message.isin(lang[selected_lang]["deleted"])) * 1
+    df.loc[df.is_deleted == 1, 'message'] = np.nan
+
+    # df["emoji_count"] = df["message"].apply(lambda word_list:
+    #                                         collections.Counter([match[
+    #                                                                  "message"]
+    #                                                              for word in
+    #                                                              word_list for
+    #                                                              match in
+    #                                                              emoji.emoji_list(
+    #                                                                  word)]))
+
     # Filter out rows with no known author
     # or phone numbers as authors
     df = df[~(~df.author.str.extract('(\+)',
@@ -103,101 +136,129 @@ def preprocess_data(df: pd.DataFrame,
                                              df.timestamp - df.timestamp.shift(
                                          1)) > pd.Timedelta(
         '7 hours')) * 1
-    return df
+    return df, locations
 
 
 def basic_stats(df: pd.DataFrame):
     df = df.drop("hour", axis=1).groupby(
         'author').mean().rename(
         columns={
-            "words": "Avg. Words",
-            "msg_length": "Avg. Message Length",
-            "letters": "Avg. Letters",
-            "is_link": "Avg. Link",
-            "is_conversation_starter": "Avg. Is Conversation Starter",
-            "is_image": "Avg. Image",
-            "is_video": "Avg. Video",
-            "is_gif": "Avg. GIF",
-            "is_audio": "Avg. Audio",
-            "is_sticker": "Avg. Sticker"
+            "words": "Words",
+            "msg_length": "Message Length",
+            "letters": "Letters",
+            "is_link": "Link",
+            "is_conversation_starter": "Is Conversation Starter",
+            "is_image": "Image",
+            "is_video": "Video",
+            "is_gif": "GIF",
+            "is_audio": "Audio",
+            "is_sticker": "Sticker",
+            "is_deleted": "Deleted",
+            "is_location": "Location"
         }
     ).style.format({
-        'Avg. Words': '{:.2f}',
-        'Avg. Message Length': '{:.1f}',
-        'Avg. Letters': '{:.1f}',
-        'Avg. Link': '{:.2%}',
-        'Avg. Is Conversation Starter': '{:.2%}',
-        'Avg. Image': '{:.2%}',
-        'Avg. Video': '{:.2%}',
-        'Avg. GIF': '{:.2%}',
-        'Avg. Audio': '{:.2%}',
-        'Avg. Sticker': '{:.2%}'
+        'Words': '{:.2f}',
+        'Message Length': '{:.1f}',
+        'Letters': '{:.1f}',
+        'Link': '{:.2%}',
+        'Is Conversation Starter': '{:.2%}',
+        'Image': '{:.2%}',
+        'Video': '{:.2%}',
+        'GIF': '{:.2%}',
+        'Audio': '{:.2%}',
+        'Sticker': '{:.2%}',
+        'Deleted': '{:.2%}',
+        'Location': '{:.2%}'
     }).background_gradient(axis=0)
     return df
 
 
 def stats_overall(df: pd.DataFrame):
+    authors = df[["author"]].drop_duplicates()
+
     temp = df.loc[df["is_image"] == 1]
-    o1 = pd.DataFrame(
+    images = pd.DataFrame(
         temp.groupby("author")["is_image"].sum() / temp[
             "is_image"].sum()).reset_index()
 
     temp = df.loc[df["is_video"] == 1]
-    o2 = pd.DataFrame(temp.groupby("author")["is_video"].sum() / temp[
+    videos = pd.DataFrame(temp.groupby("author")["is_video"].sum() / temp[
         "is_video"].sum()).reset_index()
 
     temp = df.loc[df["is_link"] == 1]
-    o3 = pd.DataFrame(temp.groupby("author")["is_link"].sum() / temp[
+    links = pd.DataFrame(temp.groupby("author")["is_link"].sum() / temp[
         "is_link"].sum()).reset_index()
 
     temp = df.loc[df["is_conversation_starter"] == 1]
-    o4 = pd.DataFrame(
+    con_starters = pd.DataFrame(
         temp.groupby("author")["is_conversation_starter"].sum() / temp[
             "is_conversation_starter"].sum()).reset_index()
 
     temp = df.loc[df["is_gif"] == 1]
-    o5 = pd.DataFrame(
+    gifs = pd.DataFrame(
         temp.groupby("author")["is_gif"].sum() / temp[
             "is_gif"].sum()).reset_index()
 
     temp = df.loc[df["is_audio"] == 1]
-    o6 = pd.DataFrame(
+    audios = pd.DataFrame(
         temp.groupby("author")["is_audio"].sum() / temp[
             "is_audio"].sum()).reset_index()
 
     temp = df.loc[df["is_sticker"] == 1]
-    o7 = pd.DataFrame(
+    stickers = pd.DataFrame(
         temp.groupby("author")["is_sticker"].sum() / temp[
             "is_sticker"].sum()).reset_index()
-    o1 = pd.merge(o1, o2, on=["author"], how="left")
-    o1 = pd.merge(o1, o3, on=["author"], how="left")
-    o1 = pd.merge(o1, o4, on=["author"], how="left")
-    o1 = pd.merge(o1, o5, on=["author"], how="left")
-    o1 = pd.merge(o1, o6, on=["author"], how="left")
-    o1 = pd.merge(o1, o7, on=["author"], how="left").fillna(
+
+    temp = df.loc[df["is_deleted"] == 1]
+    delete = pd.DataFrame(
+        temp.groupby("author")["is_deleted"].sum() / temp[
+            "is_deleted"].sum()).reset_index()
+
+    temp = df.loc[df["is_location"] == 1]
+    locs = pd.DataFrame(
+        temp.groupby("author")["is_location"].sum() / temp[
+            "is_location"].sum()).reset_index()
+
+    authors = pd.merge(authors, images, on=["author"], how="left")
+    authors = pd.merge(authors, videos, on=["author"], how="left")
+    authors = pd.merge(authors, audios, on=["author"], how="left")
+    authors = pd.merge(authors, con_starters, on=["author"], how="left")
+    authors = pd.merge(authors, links, on=["author"], how="left")
+    authors = pd.merge(authors, gifs, on=["author"], how="left")
+    authors = pd.merge(authors, stickers, on=["author"], how="left")
+    authors = pd.merge(authors, delete, on=["author"], how="left")
+    authors = pd.merge(authors, locs, on=["author"], how="left")
+    authors = authors.fillna(
         {"is_sticker": 0,
          "is_gif": 0,
          "is_audio": 0,
          "is_video": 0,
-         "is_conversation_starter": 0})
-    return o1.rename(columns={
-        "is_link": "Avg. Link",
-        "is_conversation_starter": "Avg. Is Conversation Starter",
-        "is_image": "Avg. Image",
-        "is_video": "Avg. Video",
-        "is_gif": "Avg. GIF",
-        "is_audio": "Avg. Audio",
-        "is_sticker": "Avg. Sticker"
-    }
+         "is_conversation_starter": 0,
+         "is_deleted": 0,
+         "is_location": 0}).rename(
+        columns={
+            "is_link": "Link",
+            "is_conversation_starter": "Is Conversation Starter",
+            "is_image": "Image",
+            "is_video": "Video",
+            "is_gif": "GIF",
+            "is_audio": "Audio",
+            "is_sticker": "Sticker",
+            "is_deleted": "Deleted",
+            "is_location": "Location"
+        }
     ).style.format({
-        'Avg. Link': '{:.2%}',
-        'Avg. Is Conversation Starter': '{:.2%}',
-        'Avg. Image': '{:.2%}',
-        'Avg. Video': '{:.2%}',
-        'Avg. GIF': '{:.2%}',
-        'Avg. Audio': '{:.2%}',
-        'Avg. Sticker': '{:.2%}'
+        'Link': '{:.2%}',
+        'Is Conversation Starter': '{:.2%}',
+        'Image': '{:.2%}',
+        'Video': '{:.2%}',
+        'GIF': '{:.2%}',
+        'Audio': '{:.2%}',
+        'Sticker': '{:.2%}',
+        'Deleted': '{:.2%}',
+        'Location': '{:.2%}'
     }).background_gradient(axis=0)
+    return authors
 
 
 def smoothed_daily_activity(df: pd.DataFrame):
@@ -255,11 +316,11 @@ def activity(df: pd.DataFrame):
     o = distinct_dates.groupby("author").agg(
         {"is_active": "sum", "date_diff": "max"})
     o["is_active_percent"] = 100 * (o["is_active"] / o["date_diff"])
-    return o.drop(["is_active", "date_diff"], 1).rename(columns={
+    return o.reset_index().drop(["is_active", "date_diff"], 1) \
+        .rename(columns={
         "is_active_percent": "Activity %"
     }
-    ).style.format(
-        {"Activity %": '{:.2f}'}).background_gradient(axis=0)
+    )
 
 
 def create_colormap(colors=['w', 'g'], n_bins=256):
@@ -363,14 +424,15 @@ def response_matrix(df: pd.DataFrame):
     plt.title('Reponse Martix\n ')
     plt.gca().text(.5, 1.04,
                    "Author of previous message when a message is sent*",
-                   ha='center', va='center', size=12,
+                   ha='center', va='center', size=8,
                    transform=plt.gca().transAxes);
     plt.gca().set_yticklabels(plt.gca().get_yticklabels(),
                               va='center',
-                              minor=False)
-    plt.gcf().text(0, 0,
-                   "*Excludes messages to self within 3 mins",
-                   va='bottom')
+                              minor=False,
+                              fontsize=8)
+    # plt.gcf().text(0, 0,
+    #                "*Excludes messages to self within 3 mins",
+    #                va='bottom')
     plt.tight_layout()
     return fig
 
@@ -397,10 +459,9 @@ def spammer(df: pd.DataFrame):
 def year_month(df: pd.DataFrame):
     df[
         'YearMonth'] = df.timestamp.dt.year * 100 + df.timestamp.dt.month
-    year_content = df.groupby('YearMonth', as_index=False).count()[
-        ['YearMonth', 'message']]
+    year_content = df.groupby(["year", 'YearMonth'], as_index=False).count()[
+        ["year", 'YearMonth', 'message']]
     year_content = year_content.sort_values('YearMonth')
-    year_content = year_content.set_index("YearMonth")
     return year_content
 
 
@@ -451,3 +512,143 @@ def sunburst(df: pd.DataFrame):
                          isolines=[0.5, 1],
                          color='C1', ax=ax[1])
     return fig
+
+
+def trend_stats(df: pd.DataFrame):
+    author_df = df["author"].value_counts().reset_index()
+    author_df.rename(columns={"index": "Author",
+                              "author": "Number of messages"},
+                     inplace=True)
+    author_df["Total %"] = round(
+        author_df["Number of messages"] * 100 / df.shape[0], 2)
+    author_df["Talkativeness"] = author_df["Total %"].apply(
+        lambda x: talkativeness(x, df["author"].nunique()))
+
+    df["year"] = df["timestamp"].dt.year
+    df["month"] = df["timestamp"].dt.month
+    max_year = df.year.max()
+    max_month = df.loc[
+        df.year == max_year].month.max()
+
+    df["yearmonth"] = df["year"] * 100 + \
+                      df["month"]
+    df.loc[
+        df["yearmonth"] <= max_year * 100 + max_month]
+    temp_df = df.pivot_table(
+        index=["yearmonth"], columns=["author"],
+        values=["message"], aggfunc="count", fill_value=0)
+    temp_df.columns = [col_[1] for col_ in
+                       temp_df.columns]
+    temp_df = temp_df.reset_index().sort_values(
+        ["yearmonth"])
+
+    temp_df.set_index('yearmonth', inplace=True)
+    author_df["Messaging Trend Last 12 Months"] = author_df[
+        "Author"].apply(
+        lambda x: trendline(temp_df.tail(12)[x]))
+    author_df["Messaging Trend Last 6 Months"] = author_df[
+        "Author"].apply(
+        lambda x: trendline(temp_df.tail(6)[x]))
+    author_df["Messaging Trend Last 3 Months"] = author_df[
+        "Author"].apply(
+        lambda x: trendline(temp_df.tail(3)[x]))
+    return author_df
+
+
+def word_stats(df: pd.DataFrame):
+    words_lst = (
+        ''.join(df["message"].values.astype(str))).split(' ')
+    words_lst = [i for i in words_lst if len(i) > 3]
+    df = pd.DataFrame.from_dict(Counter(words_lst),
+                                orient='index',
+                                columns=[
+                                    "count"]).reset_index().rename(
+        columns={'index': 'word'})
+    df.sort_values('count', ascending=False,
+                   inplace=True, ignore_index=True)
+    df[""] = df["count"].apply(
+        lambda x: percent_helper(x / df.shape[0]))
+    return df
+
+
+def trendline(df: pd.DataFrame, order=1):
+    index = range(0, len(df))
+    coeffs = np.polyfit(index, list(df), order)
+    slope = coeffs[-2]
+
+    if slope > 0:
+        return "Increasing (" + str(round(slope, 2)) + ")"
+    else:
+        return "Decreasing (" + str(round(slope, 2)) + ")"
+
+
+def talkativeness(percent_message, total_authors):
+    mean = 100 / total_authors
+    threshold = mean * .25
+
+    if percent_message > (mean + threshold):
+        return "Very talkative"
+    elif percent_message < (mean - threshold):
+        return "Quiet, untalkative"
+    else:
+        return "Moderately talkative"
+
+
+def extract_emojis(s):
+    return ''.join(c for c in s if c in emoji.UNICODE_EMOJI)
+
+
+# Returns smallest integer k such that k
+# * str becomes natural. str is an input floating point number #
+def gcd(a, b):
+    if b == 0:
+        return a
+    return gcd(b, a % b)
+
+
+def findnum(str):
+    # Find size of string representing a
+    # floating point number.
+    n = len(str)
+    # Below is used to find denominator in
+    # fraction form.
+    count_after_dot = 0
+
+    # Used to find value of count_after_dot
+    dot_seen = 0
+
+    # To find numerator in fraction form of
+    # given number. For example, for 30.25,
+    # numerator would be 3025.
+    num = 0
+    for i in range(n):
+        if str[i] != '.':
+            num = num * 10 + int(str[i])
+            if dot_seen == 1:
+                count_after_dot += 1
+        else:
+            dot_seen = 1
+
+    # If there was no dot, then number
+    # is already a natural.
+    if dot_seen == 0:
+        return 1
+
+    # Find denominator in fraction form. For example,
+    # for 30.25, denominator is 100
+    dem = int(math.pow(10, count_after_dot))
+
+    # Result is denominator divided by
+    # GCD-of-numerator-and-denominator. For example, for
+    # 30.25, result is 100 / GCD(3025,100) = 100/25 = 4
+    return dem / gcd(num, dem)
+
+
+def percent_helper(percent):
+    percent = math.floor(percent * 100) / 100
+
+    if percent > 0.01:
+        ans = findnum(str(percent))
+        return "{} out of {} messages".format(int(percent * ans), int(1 * ans))
+    else:
+        return "<1 out of 100 messages"

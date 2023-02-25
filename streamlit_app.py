@@ -424,22 +424,22 @@ def app():
                 if locations.shape[0] > 0:
                     st.write(""" ## Map of Locations""")
 
-                    geolocator = Nominatim(user_agent="loc_finder")
-                    with st.expander("More info"):
-                        st.info("This map shows all the locations which are "
-                                "sent by the authors via whatsapp. The "
-                                "latitude and Longitude values are extracted "
-                                "from google maps.")
-                    with st.spinner('This may take a while. Wait for it...'):
-                        for i, row in locations.iterrows():
-                            location = geolocator.reverse((row.lat, row.lon)).raw
-                            locations.loc[i, "country"] = location["address"]["country"]
-                            locations.loc[i, "town"] = location["address"]["town"]
-                        st.write("### Top shared locations")
-                        st.dataframe(pd.DataFrame(locations.groupby(["country", "town"])["lat"]
-                                     .count()).rename(columns={"lat":
-                                                   "count"}).sort_values(
-                            "count", ascending=False))
+                 #   geolocator = Nominatim(user_agent="loc_finder")
+                 #   with st.expander("More info"):
+                 #       st.info("This map shows all the locations which are "
+                 #               "sent by the authors via whatsapp. The "
+                 #               "latitude and Longitude values are extracted "
+                 #               "from google maps.")
+                 #   with st.spinner('This may take a while. Wait for it...'):
+                 #       for i, row in locations.iterrows():
+                 #           location = geolocator.reverse((row.lat, row.lon)).raw
+                 #           locations.loc[i, "country"] = location["address"]["country"]
+                 #           locations.loc[i, "town"] = location["address"]["town"]
+                 #       st.write("### Top shared locations")
+                 #       st.dataframe(pd.DataFrame(locations.groupby(["country", "town"])["lat"]
+                 #                    .count()).rename(columns={"lat":
+                 #                                  "count"}).sort_values(
+                 #           "count", ascending=False))
 
                     st.map(locations)
 

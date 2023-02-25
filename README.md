@@ -1,5 +1,5 @@
 # whatsapp-chat-analyzer
-A Streamlit application for analyzing Whatsapp Group Chat. See [here](https://koftezz-whatsapp-chat-analyzer-streamlit-app-96gt93.streamlit.app/)
+A Streamlit application for analyzing Whatsapp Group Chat. See [here](https://whats-chat-detective.streamlit.app/)
 
 V1.0 2023-02-25:
 

@@ -73,7 +73,7 @@ def app():
                 if submit_button and len(selected_authors) < 2:
                     st.warning("You must select at least 2 authors!",
                                icon="⚠️")
-        if submit_button:
+            if submit_button:
                 df, locations = preprocess_data(df=df,
                                                 selected_lang=selected_lang,
                                                 selected_authors=selected_authors)
@@ -172,11 +172,11 @@ def app():
                 st.altair_chart(c)
                 # Average message length by use
                 st.write("""
-                ## Activity Stats by Author
-                
-                It shows the percent of an author who sent at least a message in a random 
-                day with active conversation.
-                """)
+                    ## Activity Stats by Author
+                    
+                    It shows the percent of an author who sent at least a message in a random 
+                    day with active conversation.
+                    """)
                 o = activity(df=df)
                 c = alt.Chart(o).mark_bar().encode(
                     x=alt.X("author:N", sort="-y"),
@@ -204,8 +204,8 @@ def app():
 
                 # Relative activity timeseries - 100% stacked area plot
                 st.write("""
-                ## Relative Activity Area Plot
-                """)
+                    ## Relative Activity Area Plot
+                    """)
                 with st.expander("More info"):
                     st.info("It is a relative plot which we can see who has "
                             "been more active."
@@ -219,25 +219,25 @@ def app():
 
                 # Timeseries: Activity by day of week
                 st.write("""
-                ## Activity by day of week
-                0 - Monday
-                6 - Sunday
-                """)
+                    ## Activity by day of week
+                    0 - Monday
+                    6 - Sunday
+                    """)
                 o = activity_day_of_week_ts(df=df)
                 st.line_chart(o)
 
                 # Timeseries: Activity by time of day
                 st.write("""
-                ## Activity by time of day
-                X-Axis labels have some problems. ToDo.
-                """)
+                    ## Activity by time of day
+                    X-Axis labels have some problems. ToDo.
+                    """)
                 b = activity_time_of_day_ts(df=df)
                 st.line_chart(b)
 
                 # Response matrix
                 st.write("""
-                ## Response Matrix
-                """)
+                    ## Response Matrix
+                    """)
                 with st.expander("More info"):
                     st.info("This does not consider the content of the "
                             "message. It is based on who is the previous "
@@ -248,8 +248,8 @@ def app():
                 st.pyplot(fig)
 
                 st.write("""
-                ## Response Time Distribution
-                """)
+                    ## Response Time Distribution
+                    """)
                 with st.expander("More info"):
                     st.info("Self consecutive messages "
                             "within 3 minutes are excluded."
@@ -296,14 +296,14 @@ def app():
 
                 max_spammer, max_spam = spammer(df=df)
                 st.write("""
-                ## Who is the spammer?
-                The most spam is from :red[%s] with %d consecutive 
-                messages.""" % (
+                    ## Who is the spammer?
+                    The most spam is from :red[%s] with %d consecutive 
+                    messages.""" % (
                     max_spammer, max_spam))
 
                 st.write("""
-                ## Year x Month Total Messages
-                """)
+                    ## Year x Month Total Messages
+                    """)
                 year_content = year_month(df=df)
                 c = alt.Chart(year_content).mark_bar().encode(
                     x=alt.X("YearMonth:O", ),
@@ -320,8 +320,8 @@ def app():
                 st.altair_chart(c)
 
                 st.write("""
-                        ## Sunburst: Message count per daytime
-                        """)
+                            ## Sunburst: Message count per daytime
+                            """)
                 with st.expander("More info"):
                     st.info("- Left chart shows the realized values."
                             "\n- Right chart shows the adjusted values based "

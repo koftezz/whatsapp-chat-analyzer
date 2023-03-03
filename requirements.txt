@@ -9,6 +9,6 @@ scikit-learn==1.2.1
 scipy==1.10.0
 seaborn==0.12.2
 smmap==5.0.0
-streamlit==1.18.1
+streamlit==1.19
 tqdm==4.64.1
-wordcloud==1.8.2.2
+geopy==2.3.0

@@ -64,7 +64,7 @@ def app():
         @st.cache_data
         def read_sample_data():
             df = pd.read_csv(
-                "/whatsapp-chat-analyzer/data/sample_file.txt", header=None)
+                "https://raw.githubusercontent.com/koftezz/whatsapp-chat-analyzer/0aee084ffb8b8ec4869da540dc95401b8e16b7dd/data/sample_file.txt", header=None)
             return df.to_csv(index=False).encode('utf-8')
 
         csv = read_sample_data()

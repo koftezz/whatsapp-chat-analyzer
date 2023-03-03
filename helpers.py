@@ -501,10 +501,11 @@ def heatmap(df: pd.DataFrame):
         ax[0].set_title(last_year)
         ax[1].set_title(current_year)
     else:
-        fig, ax = plt.subplots(1, 1, figsize=(9, 3))
-        ax[0] = vis.calendar_heatmap(df, year=current_year,
-                                     linewidth=0,
-                                     monthly_border=True, ax=ax[1])
+        fig, ax = plt.subplots(figsize=(9, 3))
+        ax = vis.calendar_heatmap(df, year=current_year,
+                                  linewidth=0,
+                                  monthly_border=True)
+        ax.set_title(current_year)
     return fig
 
 

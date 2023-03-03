@@ -60,6 +60,20 @@ def app():
     if "df" not in session_state:
         file = st.file_uploader("Upload WhatsApp chat file without media. "
                                 "The file should be .txt", type="txt")
+
+        @st.cache_data
+        def read_sample_data():
+            df = pd.read_csv(
+                "/whatsapp-chat-analyzer/data/sample_file.txt", header=None)
+            return df.to_csv(index=False).encode('utf-8')
+
+        csv = read_sample_data()
+
+        st.download_button(
+            label="Download sample chat file.",
+            data=csv,
+            file_name='data/sample_file.txt',
+        )
         if file is not None:
             df = read_file(file)
             df = df.sort_values("timestamp")
@@ -170,10 +184,10 @@ def app():
                     o.sort_values("message", ascending=False).iloc[0][
                         'author']
                 total_msg = o.sort_values("message",
-                                                 ascending=False).iloc[0][
+                                          ascending=False).iloc[0][
                     'message']
                 st.write(f"Here is the chatter of the group :red"
-                         f"[{most_active}], by sending total of" 
+                         f"[{most_active}], by sending total of"
                          f" {total_msg} messages. Only by him/herself. 🤯")
 
                 c = alt.Chart(o).mark_bar().encode(
@@ -424,22 +438,22 @@ def app():
                 if locations.shape[0] > 0:
                     st.write(""" ## Map of Locations""")
 
-                 #   geolocator = Nominatim(user_agent="loc_finder")
-                 #   with st.expander("More info"):
-                 #       st.info("This map shows all the locations which are "
-                 #               "sent by the authors via whatsapp. The "
-                 #               "latitude and Longitude values are extracted "
-                 #               "from google maps.")
-                 #   with st.spinner('This may take a while. Wait for it...'):
-                 #       for i, row in locations.iterrows():
-                 #           location = geolocator.reverse((row.lat, row.lon)).raw
-                 #           locations.loc[i, "country"] = location["address"]["country"]
-                 #           locations.loc[i, "town"] = location["address"]["town"]
-                 #       st.write("### Top shared locations")
-                 #       st.dataframe(pd.DataFrame(locations.groupby(["country", "town"])["lat"]
-                 #                    .count()).rename(columns={"lat":
-                 #                                  "count"}).sort_values(
-                 #           "count", ascending=False))
+                    #   geolocator = Nominatim(user_agent="loc_finder")
+                    #   with st.expander("More info"):
+                    #       st.info("This map shows all the locations which are "
+                    #               "sent by the authors via whatsapp. The "
+                    #               "latitude and Longitude values are extracted "
+                    #               "from google maps.")
+                    #   with st.spinner('This may take a while. Wait for it...'):
+                    #       for i, row in locations.iterrows():
+                    #           location = geolocator.reverse((row.lat, row.lon)).raw
+                    #           locations.loc[i, "country"] = location["address"]["country"]
+                    #           locations.loc[i, "town"] = location["address"]["town"]
+                    #       st.write("### Top shared locations")
+                    #       st.dataframe(pd.DataFrame(locations.groupby(["country", "town"])["lat"]
+                    #                    .count()).rename(columns={"lat":
+                    #                                  "count"}).sort_values(
+                    #           "count", ascending=False))
 
                     st.map(locations)
 

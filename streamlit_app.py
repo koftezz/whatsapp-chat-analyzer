@@ -54,7 +54,6 @@ with st.expander("About this app"):
     """
     )
 
-
 def app():
     session_state = st.session_state
     if "df" not in session_state:
@@ -77,17 +76,20 @@ def app():
         if file is not None:
             df = read_file(file)
             df = df.sort_values("timestamp")
-            # first two entry is most likely is the group creation.
-            df = df[2:]
+            # first three entry is most likely is the group creation.
+            df = df[3:]
+            edited_df = df[["author"]].drop_duplicates()
+            edited_df["combined authors"] = edited_df["author"]
+            edited_df = st.data_editor(edited_df)
+            author_list = edited_df["combined authors"].drop_duplicates().tolist()
             with st.form(key='my_form_to_submit'):
 
                 selected_authors = st.multiselect(
                     "Choose authors of the group",
-                    df["author"].drop_duplicates().tolist())
+                    author_list)
                 selected_lang = st.radio(
                     "What\'s your Whatsapp Language?",
                     ("English", 'Turkish'))
-
                 submit_button = st.form_submit_button(label='Submit')
                 if submit_button and len(selected_authors) < 2:
                     st.warning("Proceeding with all of the authors. Please "

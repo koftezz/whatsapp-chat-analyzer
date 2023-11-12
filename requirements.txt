@@ -1,6 +1,6 @@
 altair==4.2.2
 calmap==0.0.9
-chat-miner==0.3.0
+chat-miner==0.4.0
 matplotlib==3.7.0
 matplotlib-inline==0.1.6
 numpy==1.24.2
@@ -9,6 +9,6 @@ scikit-learn==1.2.1
 scipy==1.10.0
 seaborn==0.12.2
 smmap==5.0.0
-streamlit==1.19
+streamlit==1.28.1
 tqdm==4.64.1
 geopy==2.3.0

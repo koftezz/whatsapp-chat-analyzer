@@ -1,6 +1,6 @@
-from geopy.geocoders import Nominatim
 from helpers import *
 import altair as alt
+from streamlit_extras.buy_me_a_coffee import button
 
 st.set_page_config(
     page_title="Whatsapp Group Chat Analyzer",
@@ -12,22 +12,21 @@ st.set_page_config(
         'About': "# This is an Whatsapp Group Chat Analyzer!"
     }
 )
+def buy_me_a_coffee():
+    button(username="koftezz", floating=False, width=221, text="Buy me a "
+                                                               "beer",
+           emoji="&#127866;")
+
 st.cache_data.clear()
 st.cache_resource.clear()
 st.write("""
          ## Whatsapp Group Chat Analyzer
          """)
+buy_me_a_coffee()
 
 with st.expander("About this app"):
     st.markdown(
         """
-    V1.0 2023-02-25:
-    ### What's New?
-    - GIF, Sticker, Audio, Deleted, Location Message Statistics.
-    - Maps for shared location
-    - Talkativeness & Messaging Trends
-    - General Formatting & Chart Redesign
-    
     ### Info
      - This does not save your chat file.
      - Note that it only supports English and Turkish right now.
@@ -38,14 +37,6 @@ with st.expander("About this app"):
      there might be some inconsistency in date formatting. 
      - It may take a while for around 2 minutes for 20mb of chat file on the 
      server.
-     - Possible to-dos:
-        - Aggregate multiple people into one. Sometimes a user can have multi 
-        numbers and we should give a chance to see them as one single user.
-        - Charts can be change by year via dropdown.
-        - Add emoji support
-        - Exportable pdf
-        - More prescriptive
-        - Demo chat
      - Last but not least - Thanks to [chat-miner](
      https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
      their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
@@ -78,10 +69,7 @@ def app():
             df = df.sort_values("timestamp")
             # first three entry is most likely is the group creation.
             df = df[3:]
-            edited_df = df[["author"]].drop_duplicates()
-            edited_df["combined authors"] = edited_df["author"]
-            edited_df = st.data_editor(edited_df)
-            author_list = edited_df["combined authors"].drop_duplicates().tolist()
+            author_list = df["author"].drop_duplicates().tolist()
             with st.form(key='my_form_to_submit'):
 
                 selected_authors = st.multiselect(
@@ -439,24 +427,6 @@ def app():
 
                 if locations.shape[0] > 0:
                     st.write(""" ## Map of Locations""")
-
-                    #   geolocator = Nominatim(user_agent="loc_finder")
-                    #   with st.expander("More info"):
-                    #       st.info("This map shows all the locations which are "
-                    #               "sent by the authors via whatsapp. The "
-                    #               "latitude and Longitude values are extracted "
-                    #               "from google maps.")
-                    #   with st.spinner('This may take a while. Wait for it...'):
-                    #       for i, row in locations.iterrows():
-                    #           location = geolocator.reverse((row.lat, row.lon)).raw
-                    #           locations.loc[i, "country"] = location["address"]["country"]
-                    #           locations.loc[i, "town"] = location["address"]["town"]
-                    #       st.write("### Top shared locations")
-                    #       st.dataframe(pd.DataFrame(locations.groupby(["country", "town"])["lat"]
-                    #                    .count()).rename(columns={"lat":
-                    #                                  "count"}).sort_values(
-                    #           "count", ascending=False))
-
                     st.map(locations)
 
                 st.cache_data.clear()

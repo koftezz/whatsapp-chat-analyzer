@@ -13,3 +13,4 @@ streamlit==1.28.1
 tqdm==4.64.1
 geopy==2.3.0
 wordcloud
+streamlit-extras==0.4.2

@@ -1,6 +1,8 @@
 from helpers import *
 import altair as alt
 from streamlit_extras.buy_me_a_coffee import button
+from responses import *
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Whatsapp Group Chat Analyzer",
@@ -24,26 +26,53 @@ st.write("""
          """)
 buy_me_a_coffee()
 
-with st.expander("About this app"):
+with st.expander("🌟 Discover the Magic Behind This App"):
     st.markdown(
         """
-    ### Info
-     - This does not save your chat file.
-     - Note that it only supports English and Turkish right now.
-     - Most of the charts are based on group chats but it works for dms too, 
-     some of the charts will be pointless but give it a shot.
-     - Sometimes whatsapp can have problems while exporting with date formats. 
-     If there is an error after uploading, check your file date format, 
-     there might be some inconsistency in date formatting. 
-     - It may take a while for around 2 minutes for 20mb of chat file on the 
-     server.
-     - Last but not least - Thanks to [chat-miner](
-     https://github.com/joweich/chat-miner) for easy whatsapp parsing tool and 
-     their awesome charts. Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) 
-     for his great analysis.
-     - source: [koftezz](https://github.com/koftezz/whatsapp-chat-analyzer)
+    ### About This App
+
+    - Your privacy is important: We don't store any of your chat data.
+
+    - Languages: The app currently works with English, Turkish, and German chats. We're working on adding more languages.
+
+    - Flexible analysis: You can analyze both group chats and direct messages.
+
+    - Date format note: WhatsApp date formats can sometimes cause issues. If you get an error, please check that the dates in your file are consistent.
+
+    - Processing time: It usually takes about 2 minutes to process a 20MB chat file.
+
+    - Open source: You can view our source code on [GitHub](https://github.com/koftezz/whatsapp-chat-analyzer).
+
+    - Acknowledgements: 
+      - Thanks to [chat-miner](https://github.com/joweich/chat-miner) for their WhatsApp parsing tool.
+      - Thanks to [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) for inspiration.
+
+    We hope you find some interesting insights in your chat data!
     """
     )
+
+# usage instructions
+with st.expander("📚 Usage Instructions"):
+    st.markdown(
+        """
+    ### How to Use This App
+    - For demo purposes, you can use the sample chat file provided. Download it and upload it.
+    - For your own chat file, follow these steps:
+    - **Upload Your Chat File:**
+      - Click the "Upload" button and select your WhatsApp chat file.
+      - Ensure the file is a .txt format.
+      - Select the authors of the group.
+      - Select the language of the chat.
+      - Click "Submit".
+
+    - **View the Analysis:**
+      - The app will process your chat file and display various analyses and visualizations.
+      - You can download the processed data as a CSV file.
+
+    - **Explore the Data:**
+      - Use the interactive charts and tables to explore the data.
+      - Click on different authors to see their messaging patterns.
+      """)
 
 def app():
     session_state = st.session_state
@@ -77,7 +106,7 @@ def app():
                     author_list)
                 selected_lang = st.radio(
                     "What\'s your Whatsapp Language?",
-                    ("English", 'Turkish'))
+                    ("English", 'Turkish', "German"))
                 submit_button = st.form_submit_button(label='Submit')
                 if submit_button and len(selected_authors) < 2:
                     st.warning("Proceeding with all of the authors. Please "
@@ -100,334 +129,263 @@ def app():
                                        enumerate(author_list)}
                 author_color_lookup['Group total'] = 'k'
 
-                def formatted_barh_plot(s,
-                                        pct_axis=False,
-                                        thousands_separator=False,
-                                        color_labels=True,
-                                        sort_values=True,
-                                        width=0.8,
-                                        **kwargs):
-                    if sort_values:
-                        s = s.sort_values()
-                    s.plot(kind='barh',
-                           color=s.index.to_series().map(
-                               author_color_lookup).fillna(
-                               'grey'),
-                           width=width,
-                           **kwargs)
-                    if color_labels:
-                        for color, tick in zip(
-                                s.index.to_series().map(
-                                    author_color_lookup).fillna(
-                                    'grey'),
-                                plt.gca().yaxis.get_major_ticks()):
-                            tick.label1.set_color(
-                                color)  # set the color property
-                    if pct_axis:
-                        if type(pct_axis) == int:
-                            decimals = pct_axis
-                        else:
-                            decimals = 0
-                        plt.gca().xaxis.set_major_formatter(
-                            ticker.PercentFormatter(1, decimals=decimals))
-                    elif thousands_separator:
-                        plt.gca().xaxis.set_major_formatter(
-                            ticker.FuncFormatter(
-                                lambda x, p: format(int(x), ',')))
+                # Calculate summary
+                summary = calculate_chat_summary(df)
 
-                    return plt.gca()
+                # Create the summary message
+                st.markdown("""
+                ## 📊 Chat Snapshot: Your Digital Conversation at a Glance
+                """)
 
-                msg = f"## Overall Summary\n" \
-                      f"{len(df)} total messages from" \
-                      f" {len(df.author.unique())}  " \
-                      f"people " \
-                      f"from {df.date.min()} to {df.date.max()}."
-                st.write(msg)
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.metric("Total Messages", f"{summary['total_messages']:,}")
+                    st.metric("Unique Participants", summary['unique_authors'])
+                    st.metric("Average Messages/Day", f"{summary['avg_messages_per_day']:.1f}")
+
+                with col2:
+                    st.metric("Chat Duration", f"{summary['total_days']} days")
+                    st.metric("Most Active Chatter", summary['most_active_author'])
+                    st.metric("Their Message Count", f"{summary['most_active_author_messages']:,}")
+
+                st.markdown(f"""
+                📅 From {summary['start_date'].strftime('%B %d, %Y')} to {summary['end_date'].strftime('%B %d, %Y')}
+
+                🏆 **{summary['most_active_author']}** leads the chat with **{summary['most_active_author_percentage']:.1f}%** of all messages!
+
+                Ready to uncover more insights? Let's dive deeper into your chat data! 🕵️‍♂️📱
+                """)
 
                 # Basic summary of messages
-                st.write(
-                    "## Basic summary of messages")
-                with st.expander("More info"):
-                    st.write("All the "
-                             "statistics are average of the respective "
-                             "columns. For Ex: Link means average of "
-                             "messages sent with link.\n- Conversation starter \n"
-                             "defined as a message sent at least 7 hours after the"
-                             " previous message on the thread\n")
+                st.write("## Average Message Characteristics")
+                with st.expander("Explanation of Metrics"):
+                    st.write(
+                        "This table shows the average values for various message characteristics per author. "
+                        "Here's what each metric means:\n\n"
+                        "- **Words**: Average number of words per message\n"
+                        "- **Message Length**: Average number of characters per message\n"
+                        "- **Link**: Percentage of messages containing a link\n"
+                        "- **Conversation Starter**: Percentage of messages that started a new conversation "
+                        "(defined as a message sent at least 7 hours after the previous message)\n"
+                        "- **Image/Video/GIF/Audio/Sticker**: Percentage of messages containing each media type\n"
+                        "- **Deleted**: Percentage of messages that were deleted\n"
+                        "- **Emoji**: Percentage of messages containing at least one emoji\n"
+                        "- **Location**: Percentage of messages sharing a location\n"
+                    )
                 o = basic_stats(df=df)
                 st.dataframe(o, use_container_width=True)
 
                 # Basic summary of messages
-                st.write("## Summary across authors")
+                st.write("## Overall Chat Statistics (Aggregated)")
+                with st.expander("More info"):
+                    st.info(
+                        "This section provides a summary of key statistics aggregated across all authors in the chat. "
+                        "Unlike the 'Average Message Characteristics' table above, which shows per-author averages, "
+                        "this table presents overall totals and averages for the entire conversation. "
+                        "It gives you a bird's-eye view of the general chat activity and patterns, "
+                        "helping you understand the overall dynamics of the conversation without breaking it down by individual authors."
+                    )
                 o = stats_overall(df=df)
                 st.dataframe(o)
 
                 st.write("## Talkativeness & Messaging Trends")
+                with st.expander("More info"):
+                    st.info(
+                        "This section provides insights into each author's messaging patterns and trends. "
+                        "It includes metrics such as the total number of messages, percentage of total messages, "
+                        "and a qualitative 'Talkativeness' rating. Additionally, it shows messaging trends over "
+                        "the last 3, 6, and 12 months, helping you understand how each author's participation "
+                        "has changed over time."
+                    )
                 author_df = trend_stats(df=df)
                 st.dataframe(author_df, use_container_width=True)
 
                 # Total messages sent stats
                 st.write("## Number of Messages Sent By Author")
-                o = pd.DataFrame(
-                    df.groupby('author')["message"].count()).reset_index()
-                most_active = \
-                    o.sort_values("message", ascending=False).iloc[0][
-                        'author']
-                total_msg = o.sort_values("message",
-                                          ascending=False).iloc[0][
-                    'message']
-                st.write(f"Here is the chatter of the group :red"
-                         f"[{most_active}], by sending total of"
-                         f" {total_msg} messages. Only by him/herself. 🤯")
+                message_counts = get_message_count_by_author(df)
+                most_active, total_msg = get_most_active_author(message_counts)
+                
+                chatter_response = get_random_chatter_response(most_active, total_msg)
+                st.write(chatter_response)
 
-                c = alt.Chart(o).mark_bar().encode(
-                    x=alt.X("author", sort="-y"),
-                    y=alt.Y('message:Q'),
-                    color='author',
+                chart = create_message_count_chart(message_counts)
+                st.altair_chart(chart)
+
+                # Most used emoji
+                st.write("## Most Used Emoji")
+                emoji_counts = get_most_used_emoji(df)
+                st.dataframe(emoji_counts)
+
+                # Activity Stats by Author
+                st.write("## Author Participation in Group Conversations")
+                activity_stats = get_activity_stats(df)
+                
+                activity_response = get_random_activity_response(
+                    activity_stats['most_active'],
+                    activity_stats['most_active_perc']
                 )
-                rule = alt.Chart(o).mark_rule(color='red').encode(
-                    y='mean(message):Q'
-                )
-                c = (c + rule).properties(width=600, height=600,
-                                          title='Number of messages sent'
-                                          )
-                st.altair_chart(c)
-                # Average message length by use
-                o = activity(df=df)
-                most_active = \
-                    o.sort_values("Activity %", ascending=False).iloc[0][
-                        'author']
-                most_active_perc = o.sort_values("Activity %",
-                                                 ascending=False).iloc[0][
-                    'Activity %']
-                st.write(f"""## Activity Stats by Author""")
-                st.write(f":red[{most_active}] is online "
-                         f"{round(most_active_perc, 2)}% of the conversations. "
-                         f"Go get a job!")
+                st.write(activity_response)
+                
                 with st.expander("More info"):
                     st.info(
-                        "It shows the percent of an author who sent at least a"
-                        " message in a random"
-                        " day with active conversation.")
-                c = alt.Chart(o).mark_bar().encode(
-                    x=alt.X("author:N", sort="-y"),
-                    y=alt.Y('Activity %:Q'),
-                    color='author',
-                )
-                rule = alt.Chart(o).mark_rule(color='red').encode(
-                    y='mean(Activity %):Q'
-                )
-                c = (c + rule).properties(width=600, height=600,
-                                          title='Activity % by author'
-                                          )
-                st.altair_chart(c)
+                        "This chart displays the percentage of days each author participated in group conversations. "
+                        "An 'active day' is counted when an author sends at least one message. "
+                        "The higher the percentage, the more consistently an author engages in the chat. "
+                        "This metric helps identify the most regular participants, regardless of message volume."
+                    )
+                
+                st.altair_chart(activity_stats['chart'])
 
                 # Smoothed stacked activity area timeseries plot
-                st.write("""## Activity Area Plot """)
+                st.write("""## Message Volume Trends Over Time""")
                 with st.expander("More info"):
-                    min_year = df.year.max() - 5
-                    st.info("It is an absolute plot which we can see who has "
-                            "been more active in terms of total messsages."
-                            " It is smoothed with gaussian "
-                            "distribution since the data is likely to be "
-                            f"noisy.\nChart starts from year {min_year + 1}")
-                smoothed_daily_activity_df = smoothed_daily_activity(df=df)
+                    min_year = df.year.max() - 3
+                    st.info(
+                        "This chart displays the smoothed daily message volume for each author over the last 3 years. "
+                        "Key points:\n"
+                        "- It shows absolute message counts, allowing you to compare activity levels between authors.\n"
+                        "- The data is smoothed using a Gaussian distribution to reduce noise and highlight overall trends.\n"
+                        f"- The chart covers the period from {min_year} to {df.year.max()}.\n"
+                        "- Stacked areas represent each author's contribution to the total message volume."
+                    )
+                smoothed_daily_activity_df = smoothed_daily_activity(df=df, years=3)
                 st.area_chart(smoothed_daily_activity_df)
 
                 # Relative activity timeseries - 100% stacked area plot
                 st.write("""
-                    ## Relative Activity Area Plot
+                    ## Relative Message Activity Over Time
                     """)
                 with st.expander("More info"):
                     min_year = df.year.max() - 3
-                    st.info("It is a relative plot which we can see who has "
-                            "been more active."
-                            "with respect to each other. It basically shows "
-                            "the activity percentage of each author changes "
-                            "over time. It is smoothed with gaussian "
-                            "distribution since the data is likely to be "
-                            f"noisy.\nChart starts from year {min_year + 1}")
-                o = relative_activity_ts(df=df)
+                    st.info(
+                        "This chart shows the relative message activity of each author over the last 3 years.\n\n"
+                        "Key points:\n"
+                        "- The y-axis represents the percentage of total messages sent by each author on a given day.\n"
+                        "- The areas are stacked to always total 100%, allowing you to see how each author's relative contribution changes over time.\n"
+                        "- Data is smoothed using a Gaussian distribution to reduce daily fluctuations and highlight overall trends.\n"
+                        f"- The chart covers the period from {min_year} to {df.year.max()}.\n"
+                        "- This visualization helps identify shifts in group dynamics and individual participation patterns."
+                    )
+                o = relative_activity_ts(df=df, years=3)
                 st.area_chart(o)
-
-                # Timeseries: Activity by day of week
-                st.write("""
-                    ## Activity by day of week
-                    0 - Monday
-                    6 - Sunday
-                    """)
-                o = activity_day_of_week_ts(df=df)
-                st.line_chart(o)
 
                 # Timeseries: Activity by time of day
                 st.write("""
-                    ## Activity by time of day (UTC)
+                    ## Message Activity by Time of Day
                     """)
-                b = activity_time_of_day_ts(df=df)
-
-                c = alt.Chart(b).transform_fold(
-                    selected_authors,
-                    as_=['author', "message"]
-                ).mark_line().encode(
-                    x=alt.X('utchoursminutes(timestamp):T', axis=alt.Axis(
-                        format='%H:00'),
-                            scale=alt.Scale(type='utc')),
-                    y='message:Q',
-                    color='author:N'
-                ).properties(width=1000, height=600)
-                st.altair_chart(c)
-
+                time_of_day_data = activity_time_of_day_ts(df)
+                st.altair_chart(time_of_day_data)
+                
+                # Timeseries: Activity by day of week
+                st.write("""
+                    ## Message Activity by Day of Week
+                    """)
+                # add info section
+                with st.expander("More info"):
+                    st.info(
+                        "This chart displays the average message activity for each day of the week. "
+                        "It shows the percentage of total messages sent on each day of the week, "
+                        "with each author represented by a different color. "
+                        "This visualization helps identify which days of the week are most active for messaging."
+                    )
+                day_of_week_data = activity_day_of_week_ts(df)
+                st.altair_chart(day_of_week_data)
+                
                 # Response matrix
                 st.write("""
-                    ## Response Matrix
+                    ## Author Interaction: Response Matrix
                     """)
                 with st.expander("More info"):
-                    st.info("This does not consider the content of the "
-                            "message. It is based on who is the previous "
-                            "sender of the message. Self sonsecutive messages "
-                            "within 3 minutes are excluded."
-                            "")
-                with st.container():
-                    fig = response_matrix(df=df)
-                    st.pyplot(fig)
+                    st.info("This matrix shows how often each author responds to messages from other authors. "
+                            "The percentages indicate the proportion of an author's messages that are responses to each other author. "
+                            "Note: This analysis excludes messages sent by an author to themselves within a 3-minute window.")
+
+                response_chart = response_matrix(df)
+
+                st.altair_chart(response_chart, use_container_width=True)
 
                 st.write("""
-                    ## Response Time Distribution
+                    ## Response Time Analysis
                     """)
                 with st.expander("More info"):
-                    st.info("Self consecutive messages "
-                            "within 3 minutes are excluded."
-                            " Median response time shows that author X "
-                            "responded the messages at least y mins later, "
-                            "half of the time."
-                            "")
+                    st.info("Self consecutive messages within 3 minutes are excluded. "
+                            "The distribution chart shows the frequency of response times for each author on a logarithmic scale. "
+                            "The median response time chart shows the typical time an author takes to respond to messages.")
 
-                # Response time
-                prev_msg_lt_180_seconds = (df.timestamp - df.timestamp.shift(
-                    1)).dt.seconds < 180
-                same_prev_author = (df.author == df.author.shift(1))
-                fig, ax = plt.subplots()
-                plt.subplot(121)
-                o = df[~(prev_msg_lt_180_seconds & same_prev_author)]
-                o["response_time"] = (
-                    (o.timestamp - o.timestamp.shift(1)).dt.seconds
-                        .replace(0, np.nan)
-                        .div(60)
-                        .apply(np.log10))
-                o = o[["author", "response_time"]]
+                response_time_analysis = analyze_response_time(df)
 
-                o.groupby("author")["response_time"].apply(
-                    sns.kdeplot)
-                plt.title('Response time distribution', fontsize=8)
-                plt.ylabel('Relative frequency', fontsize=8)
-                plt.xlabel('Response time (Mins)', fontsize=8)
-                locs, ticks = plt.xticks()
-                plt.xticks(locs, [f"$10^{{{int(loc)}}}$" for loc in locs])
+                #st.altair_chart(response_time_analysis['distribution_chart'], use_container_width=True)
+                st.altair_chart(response_time_analysis['median_chart'], use_container_width=True)
 
-                plt.subplot(122)
-                o = df[~(prev_msg_lt_180_seconds & same_prev_author)]
-                o["response_time"] = (
-                    (o.timestamp - o.timestamp.shift(1)).dt.seconds
-                        .replace(0, np.nan)
-                        .div(60))
-                response = o[["author", "response_time", "letters"]]
-                response.groupby("author").median()["response_time"].pipe(
-                    formatted_barh_plot)
-                plt.title('Median response time', fontsize=8)
-                plt.ylabel('')
-                plt.xlabel('Response time (Mins)', fontsize=8)
+                slowest_responder = response_time_analysis['slowest_responder']
+                response_time_message = get_random_response_time_response(slowest_responder)
+                st.write(response_time_message)
 
-                plt.tight_layout()
-                with st.container():
-                    slow_typer = response.groupby("author").median()[
-                                     "response_time"]. \
-                                     sort_values()[-1:].index[0]
-                    st.write(f"Looks like :red[{slow_typer}] has much to do, "
-                             f"except responding to you guys on time.👨‍💻👩‍💻")
-                    st.pyplot(fig)
-                std = response.response_time.std()
-                mean = response.response_time.mean()
+                st.write("## Consecutive Message Analysis")
 
-                response = response.loc[response["response_time"] <= mean + 3
-                                        * std]
-                c = alt.Chart(response).mark_point(size=60).encode(
-                    x='letters',
-                    y='response_time',
-                    color='author',
-                    tooltip=["author", "response_time", "letters"]
-                )
-                c = (c + c.transform_regression("letters",
-                                                'response_time').mark_line()). \
-                    properties(width=1000, height=600,
-                               title='Response Time vs Number of letters in '
-                                     'a message'
-                               ).interactive()
-                st.write("## Is number of letters correlated with the "
-                         "response time?")
-                with st.container():
-                    st.altair_chart(c)
+                streak_info = find_longest_consecutive_streak(df)
 
-                max_spammer, max_spam = spammer(df=df)
-                st.write("""
-                    ## Who is the spammer?
-                    The most spam is from :red[%s] with %d consecutive 
-                    messages. ☠️""" % (
-                    max_spammer, max_spam))
+                # Get a random response
+                streak_response = get_random_streak_response(streak_info['author'], streak_info['streak_length'])
+                st.write(streak_response)
+                # Display the streak messages
+                st.write("Streak Messages:")
+                st.dataframe(streak_info['streak_messages'])
 
-                st.write("""
-                    ## Year x Month Total Messages
-                    """)
-                year_content = year_month(df=df)
-                total_messages = year_content.sort_values("message",
-                                                          ascending=False).iloc[
-                    0].message
-                year = int(year_content.sort_values("message",
-                                                    ascending=False).iloc[
-                               0].YearMonth / 100)
-                month = \
-                    year_content.sort_values("message", ascending=False).iloc[
-                        0].YearMonth % 100
-                st.write(f"You break the monthly record! Total of"
-                         f" {total_messages} messages"
-                         f" in {year}-{str(month).rjust(2, '0')}.💥 ")
-                c = alt.Chart(year_content).mark_bar().encode(
-                    x=alt.X("YearMonth:O", ),
-                    y=alt.Y('message:Q'),
-                    color='year:O',
-                )
-                rule = alt.Chart(year_content).mark_rule(color='red').encode(
-                    y='mean(message):Q'
-                )
-                c = (c + rule).properties(width=1000, height=600,
-                                          title='Total Number of messages '
-                                                'sent over years'
-                                          )
-                st.altair_chart(c)
+                st.write("## Monthly Message Volume Analysis")
 
-                st.write("""
-                            ## Sunburst: Message count per daytime
-                            """)
-                with st.expander("More info"):
-                    st.info("- Left chart shows the realized values."
-                            "\n- Right chart shows the adjusted values based "
-                            "on "
-                            "max message count.")
-                fig = sunburst(df=df)
-                st.pyplot(fig)
+                with st.expander("More Info"):
+                    st.write("This chart shows the total number of messages sent each month over time. "
+                             "The red line represents the average monthly message count. "
+                             "Each bar is colored by year for easy year-over-year comparison.")
+                monthly_analysis = analyze_monthly_messages(df)
 
-                # st.write("""
-                # Radarchart: Message count per weekday
-                # """)
-                # fig = radar_chart(df=df)
-                # st.pyplot(fig)
+                st.write(f"🏆 New monthly record! A total of {monthly_analysis['total_messages']} messages "
+                         f"were sent in {monthly_analysis['peak_month']}. 💥")
+
+                st.altair_chart(monthly_analysis['chart'], use_container_width=True)
+
+                #st.write("""
+                #    ## Sunburst: Message Distribution by Day and Hour
+                #    """)
+
+                #with st.expander("More info"):
+                #    st.info("These sunburst charts show the distribution of messages by day of the week and hour of the day. "
+                #            "The inner ring represents days of the week, and the outer ring represents hours of the day. "
+                #            "The size and color of each segment indicate the number of messages.\n\n"
+                #            "- Left chart: Highlights the most active times (larger segments are ordered first).\n"
+                #            "- Right chart: Shows a more even distribution (smaller segments are ordered first).")
+
+                # create the sunburst chart
+                #chart1, chart2 = create_sunburst_charts(df)
+
+                #col1, col2 = st.columns(2)
+                #with col1:
+                #    st.altair_chart(chart1)
+                #with col2:
+                #    st.altair_chart(chart2)
 
                 st.write(""" ## Heatmap: Message count per day """)
-                fig = heatmap(df=df)
-                st.pyplot(fig)
+                with st.expander("More Info"):
+                    st.info("This heatmap shows the number of messages sent each day. "
+                            "The x-axis represents weeks, the y-axis represents days of the week, "
+                            "and the color intensity indicates the number of messages. "
+                            "The chart is faceted by year for easy year-over-year comparison. "
+                            "Hover over a cell to see the exact date and message count.")
+                heatmap_chart = heatmap(df)
+                st.altair_chart(heatmap_chart, use_container_width=True)
+                
 
-                if locations.shape[0] > 0:
-                    st.write(""" ## Map of Locations""")
-                    st.map(locations)
+                st.write("## Word Cloud of Most Frequently Used Words")
+                with st.expander("More Info"):
+                    st.info("This word cloud displays the most frequently used words in the chat. "
+                            "The size of each word is proportional to its frequency of occurrence. "
+                            "This visualization helps identify the most common words used in the chat, "
+                            "which can provide insights into the chat's topics and themes.")
+                word_cloud = create_word_cloud(df)
+                st.image(word_cloud)
+
 
                 st.cache_data.clear()
                 st.cache_resource.clear()

@@ -4,7 +4,6 @@ import numpy as np
 from chatminer.chatparsers import WhatsAppParser
 import tempfile
 import chatminer.visualizations as vis
-from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
 import math
 from collections import Counter

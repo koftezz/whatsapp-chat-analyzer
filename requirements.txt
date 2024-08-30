@@ -14,3 +14,4 @@ tqdm==4.66.1
 geopy==2.4.0
 wordcloud==1.9.2
 streamlit-extras==0.3.5
+emoji==2.0.0

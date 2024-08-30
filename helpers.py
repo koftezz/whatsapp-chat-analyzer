@@ -2,12 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from chatminer.chatparsers import WhatsAppParser
-import seaborn as sns
-import datetime
 import tempfile
 import chatminer.visualizations as vis
 from matplotlib import pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import gaussian_filter
 import math
 from collections import Counter
@@ -16,8 +13,6 @@ import altair as alt
 import emoji
 from wordcloud import WordCloud
 import re
-import networkx as nx
-from pyvis.network import Network
 
 
 @st.cache_data(show_spinner=False)
@@ -515,20 +510,6 @@ def year_month(df: pd.DataFrame):
     year_content = year_content.sort_values('YearMonth')
     return year_content
 
-
-def radar_chart(df: pd.DataFrame):
-    fig, ax = plt.subplots(1, 2, figsize=(7, 3),
-                           subplot_kw={'projection': 'radar'})
-    current_year = df.year.max()
-    last_year = current_year - 1
-    ax[0] = vis.radar(df.loc[df["year"] == last_year], ax=ax[0])
-    ax[1] = vis.radar(df.loc[df["year"] == current_year], ax=ax[1], color='C1',
-                      alpha=0)
-    ax[0].set_title(last_year)
-    ax[1].set_title(current_year)
-    plt.tight_layout()
-
-    return fig
 
 def heatmap(df: pd.DataFrame):
     # Prepare data for heatmap

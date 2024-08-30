@@ -2,7 +2,6 @@ from helpers import *
 import altair as alt
 from streamlit_extras.buy_me_a_coffee import button
 from responses import *
-import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Whatsapp Group Chat Analyzer",

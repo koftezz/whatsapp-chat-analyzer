@@ -179,7 +179,6 @@ def app():
                         "- **Emoji**: Percentage of messages containing at least one emoji\n"
                         "- **Location**: Percentage of messages sharing a location\n"
                     )
-                print(df.columns)
                 o = basic_stats(df=df)
                 st.dataframe(o, use_container_width=True)
 

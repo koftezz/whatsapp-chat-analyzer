@@ -26,7 +26,7 @@ def read_file(file):
     return df
 
 def get_most_active_author(df: pd.DataFrame):
-    author_message_counts = df.groupby('author')["message"].count().reset_index()
+    author_message_counts = df.groupby('author', as_index=False)["message"].count().reset_index()
     most_active_author = author_message_counts.sort_values("message", ascending=False).iloc[0]
     return most_active_author['author'], most_active_author['message']
 
@@ -156,8 +156,6 @@ def basic_stats(df: pd.DataFrame):
     # Calculate mean values for each author
     df_mean = df.groupby('author').mean()
 
-    print(df.columns)
-    
     # Define column renaming dictionary
     rename_dict = {
         "words": "Words",
@@ -307,7 +305,7 @@ def activity(df: pd.DataFrame):
     distinct_dates["date_diff"] = (
             distinct_dates['max_date'] - distinct_dates[
         'start_date']).dt.days
-    o = distinct_dates.groupby("author").agg(
+    o = distinct_dates.groupby("author", as_index=False).agg(
         {"is_active": "sum", "date_diff": "max"})
     o["is_active_percent"] = 100 * (o["is_active"] / o["date_diff"])
     return o.reset_index().drop(["is_active", "date_diff"], 1) \

@@ -100,7 +100,6 @@ def app():
         )
         if file is not None:
             df = read_file(file)
-            print(df.columns)
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df = df.sort_values("timestamp")
             # first three entry is most likely is the group creation.

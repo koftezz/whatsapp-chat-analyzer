@@ -892,6 +892,7 @@ def get_activity_stats(df: pd.DataFrame):
 
 def analyze_response_time(df: pd.DataFrame):
     # Calculate time difference and same author flag
+    df = df.sort_values(["timestamp", "author"])
     df['time_diff'] = df['timestamp'].diff().dt.total_seconds()
     df['same_author'] = df['author'] == df['author'].shift()
 
@@ -907,6 +908,11 @@ def analyze_response_time(df: pd.DataFrame):
     # Calculate median response time for each author
     median_response_time = response_data.groupby('author')['response_time'].median().reset_index()
 
+    # Calculate average time to first response for each author
+    first_response_data = df[df['same_author'] == False]  # Only consider first responses
+    average_first_response_time = first_response_data.groupby('author')['time_diff'].mean().reset_index()
+    average_first_response_time['time_diff'] = average_first_response_time['time_diff'] / 60  # Convert to minutes
+
     # Prepare data for distribution plot
     distribution_data = response_data[['author', 'log_response_time']].dropna()
 
@@ -919,9 +925,19 @@ def analyze_response_time(df: pd.DataFrame):
         title='Median Response Time by Author'
     )
 
+    # Create average time to first response chart
+    first_response_chart = alt.Chart(average_first_response_time).mark_bar().encode(
+        y=alt.Y('author:N', sort='-x'),
+        x=alt.X('time_diff:Q', title='Average Time to First Response (minutes)'),
+        color='author:N'
+    ).properties(
+        title='Average Time to First Response by Author'
+    )
+
     return {
         'median_chart': median_chart,
-        'slowest_responder': median_response_time.loc[median_response_time['response_time'].idxmax(), 'author']
+        'slowest_responder': median_response_time.loc[median_response_time['response_time'].idxmax(), 'author'],
+        'first_response_chart': first_response_chart
     }
 
 def analyze_monthly_messages(df: pd.DataFrame):

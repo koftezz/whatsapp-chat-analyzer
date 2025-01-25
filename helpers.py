@@ -892,6 +892,7 @@ def get_activity_stats(df: pd.DataFrame):
 
 def analyze_response_time(df: pd.DataFrame):
     # Calculate time difference and same author flag
+    df = df.sort_values(["timestamp", "author"])
     df['time_diff'] = df['timestamp'].diff().dt.total_seconds()
     df['same_author'] = df['author'] == df['author'].shift()
 

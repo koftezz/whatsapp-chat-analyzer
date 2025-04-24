@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from chatminer.chatparsers import WhatsAppParser
+# Re-import WhatsAppParser and SignalParser
+from chatminer.chatparsers import WhatsAppParser, SignalParser 
+# import chatminer.visualizations as vis
 import tempfile
-import chatminer.visualizations as vis
 from scipy.ndimage import gaussian_filter
 import math
 from collections import Counter
@@ -12,18 +13,147 @@ import altair as alt
 import emoji
 from wordcloud import WordCloud
 import re
+import datetime # Added for custom parsing
 
+# --- Private Helper Functions for Parsing --- 
+
+def _try_parse_whatsapp(bytes_data: bytes) -> pd.DataFrame | None:
+    """Attempts to parse the chat file using WhatsAppParser."""
+    try:
+        with tempfile.NamedTemporaryFile(mode="wb") as temp_whatsapp:
+            temp_whatsapp.write(bytes_data)
+            temp_whatsapp.flush()
+            with st.spinner('Attempting WhatsApp format parsing...'):
+                parser = WhatsAppParser(temp_whatsapp.name)
+                parser.parse_file()
+                df = parser.parsed_messages.get_df()
+            
+            if not df.empty:
+                return df
+            else:
+                st.warning("WhatsApp parser succeeded but found no messages.")
+                return None
+    except Exception as e:
+        st.warning(f"WhatsApp parser failed ({type(e).__name__}).")
+        return None
+
+def _try_parse_signal(bytes_data: bytes) -> pd.DataFrame | None:
+    """Attempts to parse the chat file using chatminer.SignalParser."""
+    try:
+        with tempfile.NamedTemporaryFile(mode="wb") as temp_signal:
+            temp_signal.write(bytes_data)
+            temp_signal.flush()
+            with st.spinner('Attempting standard Signal format parsing...'):
+                parser = SignalParser(temp_signal.name)
+                parser.parse_file()
+                df = parser.parsed_messages.get_df()
+            
+            if not df.empty:
+                return df
+            else:
+                st.warning("Standard Signal parser succeeded but found no messages.")
+                return None
+    except Exception as e:
+        st.warning(f"Standard Signal parser failed ({type(e).__name__}).")
+        return None
+
+def _try_parse_sigtop(bytes_data: bytes) -> pd.DataFrame | None:
+    """Attempts to parse the chat file using the custom sigtop format parser."""
+    try:
+        with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as temp_text:
+            with st.spinner('Attempting sigtop format parsing (fallback)...'):
+                text_data = bytes_data.decode('utf-8') 
+                temp_text.write(text_data)
+                temp_text.seek(0)
+
+                messages = []
+                current_message = None
+                for line in temp_text:
+                    line = line.strip()
+                    if line.startswith("From:"):
+                        if current_message:
+                            current_message['message'] = "\\n".join(current_message['message_lines']).strip()
+                            if current_message['message'] and current_message['timestamp'] is not None:
+                                messages.append({
+                                    "timestamp": current_message["timestamp"],
+                                    "author": current_message["author"],
+                                    "message": current_message['message']
+                                })
+                        
+                        author = line.split("From:")[1].strip()
+                        if '(' in author:
+                            author = author.split('(')[0].strip()
+                        current_message = {"author": author, "timestamp": None, "message_lines": []}
+
+                    elif line.startswith("Sent:") and current_message:
+                        date_str = line.split("Sent:")[1].strip()
+                        try:
+                            dt_obj = datetime.datetime.strptime(date_str.split(' +')[0], '%a, %d %b %Y %H:%M:%S')
+                            current_message["timestamp"] = dt_obj
+                        except ValueError:
+                            print(f"Warning: Could not parse date in sigtop: {date_str}")
+                            current_message["timestamp"] = None 
+
+                    elif current_message and current_message["timestamp"] is not None and line: 
+                        current_message["message_lines"].append(line)
+
+                if current_message and current_message['message_lines'] and current_message['timestamp'] is not None:
+                    current_message['message'] = "\\n".join(current_message['message_lines']).strip()
+                    if current_message['message']:
+                        messages.append({
+                            "timestamp": current_message["timestamp"],
+                            "author": current_message["author"],
+                            "message": current_message['message']
+                        })
+
+                if messages:
+                    df = pd.DataFrame(messages)
+                    if not df.empty:
+                        return df
+                    else:
+                         st.warning("Sigtop fallback parser found no messages.") 
+                         return None
+                else:
+                     st.warning("Sigtop fallback parser found no messages.")
+                     return None
+    except Exception as e:
+        st.error(f"Error during sigtop fallback parsing: {type(e).__name__}: {e}")
+        return None
+
+# --- Main Public Function --- 
 
 @st.cache_data(show_spinner=False)
 def read_file(file):
-    with tempfile.NamedTemporaryFile(mode="wb") as temp:
-        with st.spinner('This may take a while. Wait for it...'):
-            bytes_data = file.getvalue()
-            temp.write(bytes_data)
-            parser = WhatsAppParser(temp.name)
-            parser.parse_file()
-            df = parser.parsed_messages.get_df()
-    return df
+    """Reads and parses the uploaded chat file, trying multiple formats."""
+    df = None
+    parser_used = "None"
+    bytes_data = file.getvalue()
+
+    # Try parsers sequentially
+    parsers_to_try = [
+        ("WhatsAppParser", _try_parse_whatsapp),
+        ("SignalParser", _try_parse_signal),
+        ("sigtop (custom)", _try_parse_sigtop)
+    ]
+
+    for name, parser_func in parsers_to_try:
+        df = parser_func(bytes_data)
+        if df is not None:
+            parser_used = name
+            break # Stop trying once a parser succeeds
+
+    # Final Processing/Return
+    if df is not None:
+         st.success(f"Successfully parsed using: {parser_used}")
+         # Ensure timestamp is datetime type, coercing errors
+         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce') 
+         # Drop rows where timestamp parsing failed
+         df = df.dropna(subset=['timestamp']) 
+         df = df.sort_values('timestamp').reset_index(drop=True)
+         return df
+    else:
+         st.error("Could not parse file. Is it a valid WhatsApp, Signal, or sigtop export?")
+         return pd.DataFrame(columns=['timestamp', 'author', 'message'])
 
 def get_most_active_author(df: pd.DataFrame):
     author_message_counts = df.groupby('author', as_index=False)["message"].count().reset_index()
@@ -35,6 +165,7 @@ def preprocess_data(df: pd.DataFrame, selected_lang: str, selected_authors: list
     df = preprocess_timestamps(df, selected_authors)
     df = process_links(df)
     df = process_message_length(df)
+    df = process_word_count(df)
     df = process_multimedia(df, lang)
     df = process_emojis(df)
     df = filter_authors(df)
@@ -107,18 +238,55 @@ def preprocess_timestamps(df: pd.DataFrame, selected_authors: list):
 
 def process_locations(df: pd.DataFrame):
     df["is_location"] = (df.message.str.contains('maps.google') == True) * 1
-    locations = df.loc[df["is_location"] == 1]
+    locations_df = df.loc[df["is_location"] == 1] # Renamed temp df
     df.loc[df.is_location == 1, 'message'] = np.nan
-
-    if locations.shape[0] > 0:
-        locs = locations["message"].str.split(" ", expand=True)
-        locs[1] = locs[1].str[27:]
-        locs = locs[1].str.split(",", expand=True)
-        locs = locs.rename(columns={0: "lat", 1: "lon"})
-        locs = locs.loc[(locs["lat"] != "") & (locs["lon"] != "") & (~locs["lat"].isna()) & (~locs["lon"].isna())]
-        locations = locs[["lat", "lon"]].astype(float).drop_duplicates()
     
-    return df, locations
+    processed_locations = pd.DataFrame(columns=['lat', 'lon']) # Initialize empty df for results
+
+    if locations_df.shape[0] > 0:
+        # Iterate over potential location messages safely
+        valid_locs_list = []
+        for index, row in locations_df.iterrows():
+            try:
+                # 1. Split message by space
+                parts = row['message'].split(" ")
+                if len(parts) < 2:
+                    # print(f"Warning: Unexpected location format (no space?): {row['message']}")
+                    continue
+                
+                url_part = parts[1]
+                
+                # 2. Check and strip prefix (adjust length if needed)
+                prefix = 'https://maps.google.com/?q='
+                prefix_len = len(prefix)
+                if not url_part.startswith(prefix):
+                     # print(f"Warning: Location URL doesn't start as expected: {url_part}")
+                    continue
+                
+                coord_part = url_part[prefix_len:]
+                
+                # 3. Split coordinates by comma
+                coords = coord_part.split(",")
+                if len(coords) == 2:
+                    lat_str, lon_str = coords[0], coords[1]
+                    # 4. Validate and convert to float
+                    lat = float(lat_str)
+                    lon = float(lon_str)
+                    if pd.notna(lat) and pd.notna(lon):
+                       valid_locs_list.append({'lat': lat, 'lon': lon})
+                else:
+                    # print(f"Warning: Could not split coordinates by comma: {coord_part}")
+                    continue
+            except (IndexError, ValueError, TypeError) as e:
+                # Catch potential errors during splitting/conversion
+                # print(f"Warning: Error processing location '{row['message']}': {e}")
+                continue
+        
+        if valid_locs_list:
+             processed_locations = pd.DataFrame(valid_locs_list).drop_duplicates()
+
+    # Return original df (with message column cleaned) and the processed locations    
+    return df, processed_locations
 
 def process_links(df: pd.DataFrame):
     df['is_link'] = ~df.message.str.extract('(https?:\S*)', expand=False).isnull() * 1
@@ -127,6 +295,13 @@ def process_links(df: pd.DataFrame):
 def process_message_length(df: pd.DataFrame):
     df['msg_length'] = df.message.str.len()
     df.loc[df.is_link == 1, 'msg_length'] = np.nan
+    return df
+
+def process_word_count(df: pd.DataFrame):
+    # Fill NaN messages with empty string before splitting
+    df['words'] = df['message'].fillna('').str.split().str.len()
+    # Ensure multimedia/link messages (where message became NaN) have 0 words
+    df.loc[df['message'].isna(), 'words'] = 0 
     return df
 
 def process_multimedia(df: pd.DataFrame, lang: dict):

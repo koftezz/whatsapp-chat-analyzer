@@ -22,7 +22,11 @@ def read_file(file):
             temp.write(bytes_data)
             parser = WhatsAppParser(temp.name)
             parser.parse_file()
-            df = parser.parsed_messages.get_df()
+            df = parser.parsed_messages.get_df(as_pandas=True)
+            df["weekday"] = df["timestamp"].dt.strftime("%A")
+            df["hour"] = df["timestamp"].dt.hour
+            df["words"] = df["message"].apply(lambda s: len(s.split(" ")))
+            df["letters"] = df["message"].apply(len)
     return df
 
 def get_most_active_author(df: pd.DataFrame):
@@ -75,8 +79,9 @@ def get_language_settings(selected_lang: str):
             "gif": "GIF omitted",
             "audio": "audio omitted",
             "sticker": "sticker omitted",
-            "deleted": ["This message was deleted.", "You deleted this message."],
-            "location": "Location https://"
+            "deleted": ["This message was deleted.", "You deleted this message.", "This message was deleted"],
+            "location": "Location https://",
+            "media": "<Media omitted>",
         },
         "Turkish": {
             "image": "görüntü dahil edilmedi",
@@ -130,7 +135,7 @@ def process_message_length(df: pd.DataFrame):
     return df
 
 def process_multimedia(df: pd.DataFrame, lang: dict):
-    multimedia_types = ['image', 'video', 'gif', 'sticker', 'audio']
+    multimedia_types = ['image', 'video', 'gif', 'sticker', 'audio', 'media']
     for media_type in multimedia_types:
         column_name = f'is_{media_type}'
         df[column_name] = (df.message == lang[media_type]) * 1
@@ -167,6 +172,7 @@ def basic_stats(df: pd.DataFrame):
         "is_video": "Video",
         "is_gif": "GIF",
         "is_audio": "Audio",
+        "is_media": "Media",
         "is_sticker": "Sticker",
         "is_deleted": "Deleted",
         "is_emoji": "Emoji",
@@ -189,6 +195,7 @@ def basic_stats(df: pd.DataFrame):
         'Video': '{:.2%}',
         'GIF': '{:.2%}',
         'Audio': '{:.2%}',
+        'Media': '{:.2%}',
         'Sticker': '{:.2%}',
         'Deleted': '{:.2%}',
         'Location': '{:.2%}',
@@ -210,7 +217,7 @@ def stats_overall(df: pd.DataFrame):
     # List of columns to process
     columns = [
         "is_image", "is_video", "is_link", "is_conversation_starter",
-        "is_gif", "is_audio", "is_sticker", "is_deleted", "is_location", "is_emoji"
+        "is_gif", "is_audio", "is_media", "is_sticker", "is_deleted", "is_location", "is_emoji"
     ]
     
     # Function to process each column
@@ -235,6 +242,7 @@ def stats_overall(df: pd.DataFrame):
         "is_video": "Video",
         "is_gif": "GIF",
         "is_audio": "Audio",
+        "is_media": "Media",
         "is_sticker": "Sticker",
         "is_deleted": "Deleted",
         "is_location": "Location",

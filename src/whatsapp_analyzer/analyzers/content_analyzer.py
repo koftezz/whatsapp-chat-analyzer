@@ -75,13 +75,11 @@ def get_most_used_emoji(df: pd.DataFrame) -> pd.DataFrame:
 
         # Convert to DataFrame for sorting
         emoji_df = pd.DataFrame(emoji_counts.items(), columns=['Emoji', 'Count'])
-        # Remove whitespace from emoji column
-        emoji_df['Emoji'] = emoji_df['Emoji'].str.replace(' ', '')
-        emoji_df['Emoji'] = emoji_df['Emoji'].str.replace('  ', '')
-        emoji_df = emoji_df[emoji_df['Emoji'] != '']  # Remove non-emoji entries
 
-        # Remove nulls
-        emoji_df = emoji_df[emoji_df['Emoji'].notna()]
+        # Clean emoji column: remove whitespace and filter invalid entries
+        emoji_df['Emoji'] = emoji_df['Emoji'].str.replace(r'\s+', '', regex=True)
+        emoji_df = emoji_df[emoji_df['Emoji'].notna() & (emoji_df['Emoji'] != '')]
+
         # Sort by count in descending order
         emoji_df = emoji_df.sort_values('Count', ascending=False)
         emoji_df['Count'] = emoji_df['Count'].astype(int)

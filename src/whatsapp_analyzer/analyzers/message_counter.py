@@ -20,7 +20,7 @@ def get_message_count_by_author(df: pd.DataFrame) -> pd.DataFrame:
     ).reset_index()
 
 
-def get_most_active_author(df_or_counts) -> tuple:
+def get_most_active_author(df_or_counts: pd.DataFrame) -> tuple:
     """
     Get the most active author and their message count.
 
@@ -31,18 +31,12 @@ def get_most_active_author(df_or_counts) -> tuple:
     Returns:
         Tuple of (author_name, message_count)
     """
-    if 'message' in df_or_counts.columns and 'author' in df_or_counts.columns:
-        # It's a message counts DataFrame
-        if df_or_counts.index.name == 'author':
-            df_or_counts = df_or_counts.reset_index()
-        most_active = df_or_counts.sort_values("message", ascending=False).iloc[0]
-        return most_active['author'], most_active['message']
+    is_message_counts = 'message' in df_or_counts.columns and 'author' in df_or_counts.columns
+
+    if is_message_counts:
+        counts = df_or_counts.reset_index(drop=True) if df_or_counts.index.name == 'author' else df_or_counts
     else:
-        # It's a raw DataFrame - compute counts first
-        author_message_counts = df_or_counts.groupby(
-            'author', as_index=False
-        )["message"].count().reset_index()
-        most_active_author = author_message_counts.sort_values(
-            "message", ascending=False
-        ).iloc[0]
-        return most_active_author['author'], most_active_author['message']
+        counts = df_or_counts.groupby('author', as_index=False)["message"].count()
+
+    most_active = counts.sort_values("message", ascending=False).iloc[0]
+    return most_active['author'], most_active['message']

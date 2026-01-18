@@ -5,13 +5,13 @@ A comprehensive tool for analyzing WhatsApp chat exports with support for
 English, Turkish, and German languages.
 """
 
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add paths for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-import streamlit as st
 
 from ui.sidebar import render_sidebar
 from ui.tabs import render_tabs

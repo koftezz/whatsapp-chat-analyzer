@@ -4,9 +4,10 @@ Activity tab for WhatsApp Chat Analyzer.
 Shows temporal patterns: time of day, day of week, heatmaps.
 """
 
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 

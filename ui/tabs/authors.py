@@ -4,9 +4,10 @@ Authors tab for WhatsApp Chat Analyzer.
 Shows author statistics, rankings, and interaction patterns.
 """
 
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 

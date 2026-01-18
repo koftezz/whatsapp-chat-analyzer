@@ -34,14 +34,13 @@ def calculate_talkativeness(percentage: float, num_authors: int) -> str:
 
     if ratio > 2:
         return "Very talkative"
-    elif ratio > 1.5:
+    if ratio > 1.5:
         return "Talkative"
-    elif ratio > 0.75:
+    if ratio > 0.75:
         return "Average"
-    elif ratio > 0.5:
+    if ratio > 0.5:
         return "Quiet"
-    else:
-        return "Very quiet"
+    return "Very quiet"
 
 
 # Backwards compatibility alias
@@ -155,19 +154,19 @@ def analyze_trend(series: pd.Series) -> str:
     end_value = series.iloc[-1]
     pct_change = ((end_value - start_value) / start_value) * 100 if start_value != 0 else np.inf
 
-    # Interpret trend
-    if p_value < 0.1:  # Statistical significance threshold
-        if slope > 0:
-            trend = "Increase"
-        else:
-            trend = "Decrease"
-    else:
+    # Determine trend direction based on statistical significance
+    if p_value >= 0.1:
         trend = "No trend"
+    elif slope > 0:
+        trend = "Increase"
+    else:
+        trend = "Decrease"
 
-    # Determine trend strength
-    if abs(pct_change) > 50:
+    # Determine trend strength based on percentage change
+    abs_pct_change = abs(pct_change)
+    if abs_pct_change > 50:
         strength = "Strong"
-    elif abs(pct_change) > 25:
+    elif abs_pct_change > 25:
         strength = "Moderate"
     else:
         strength = "Slight"
@@ -189,8 +188,5 @@ def trendline(df: pd.DataFrame, order: int = 1) -> str:
     index = range(0, len(df))
     coeffs = np.polyfit(index, list(df), order)
     slope = coeffs[-2]
-
-    if slope > 0:
-        return f"Increasing ({round(slope, 2)})"
-    else:
-        return f"Decreasing ({round(slope, 2)})"
+    direction = "Increasing" if slope > 0 else "Decreasing"
+    return f"{direction} ({round(slope, 2)})"

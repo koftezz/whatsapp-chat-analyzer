@@ -5,10 +5,11 @@ Handles file upload, configuration, and action buttons.
 """
 
 import hashlib
-import streamlit as st
-import pandas as pd
-import sys
 import os
+import sys
+
+import pandas as pd
+import streamlit as st
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -150,13 +151,9 @@ def _render_config_section():
     if len(selected_authors) >= 2:
         config['ready_to_analyze'] = True
 
-        # Determine button label
-        if st.session_state.get('processed_data') is not None:
-            button_label = "Re-analyze"
-            button_type = "secondary"
-        else:
-            button_label = "Analyze Chat"
-            button_type = "primary"
+        has_processed_data = st.session_state.get('processed_data') is not None
+        button_label = "Re-analyze" if has_processed_data else "Analyze Chat"
+        button_type = "secondary" if has_processed_data else "primary"
 
         if st.button(button_label, type=button_type, use_container_width=True):
             config['analysis_requested'] = True

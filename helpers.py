@@ -90,7 +90,8 @@ def get_language_settings(selected_lang: str):
             "audio": "ses dahil edilmedi",
             "sticker": "Çıkartma dahil edilmedi",
             "deleted": ["Bu mesaj silindi.", "Bu mesajı sildiniz."],
-            "location": "Konum https://"
+            "location": "Konum https://",
+            "media": "<Medya dahil edilmedi>"
         },
         "German": {
             "image": "Bild weggelassen",
@@ -99,7 +100,8 @@ def get_language_settings(selected_lang: str):
             "audio": "Audio weggelassen",
             "sticker": "Sticker weggelassen",
             "deleted": ["Diese Nachricht wurde gelöscht.", "Du hast diese Nachricht gelöscht."],
-            "location": "Standort https://"
+            "location": "Standort https://",
+            "media": "<Medien weggelassen>"
         }
     }
     return lang[selected_lang]

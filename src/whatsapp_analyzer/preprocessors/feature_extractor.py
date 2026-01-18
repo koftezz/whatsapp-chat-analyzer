@@ -38,7 +38,7 @@ def process_locations(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         Tuple of (processed DataFrame, locations DataFrame with lat/lon)
     """
     df = df.copy()
-    df["is_location"] = (df.message.str.contains('maps.google') == True).astype(int)
+    df["is_location"] = df.message.str.contains('maps.google', na=False).astype(int)
     locations = df.loc[df["is_location"] == 1].copy()
     df.loc[df.is_location == 1, 'message'] = np.nan
 
@@ -71,7 +71,7 @@ def process_links(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame with 'is_link' flag column
     """
     df = df.copy()
-    df['is_link'] = (~df.message.str.extract('(https?:\S*)', expand=False).isnull()).astype(int)
+    df['is_link'] = df.message.str.contains(r'https?:\S+', regex=True, na=False).astype(int)
     return df
 
 

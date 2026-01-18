@@ -19,4 +19,6 @@ def filter_authors(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Filtered DataFrame
     """
-    return df[~(~df.author.str.extract('(\+)', expand=False).isnull() | df.author.isnull())]
+    has_plus_sign = df.author.str.contains(r'\+', regex=True, na=False)
+    is_null = df.author.isnull()
+    return df[~(has_plus_sign | is_null)]

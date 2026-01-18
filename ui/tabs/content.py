@@ -4,9 +4,10 @@ Content tab for WhatsApp Chat Analyzer.
 Shows word clouds, emoji analysis, and content statistics.
 """
 
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 

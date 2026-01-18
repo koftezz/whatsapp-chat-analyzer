@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from whatsapp_analyzer.analyzers import get_most_used_emoji
 from whatsapp_analyzer.visualizations import create_word_cloud
+from ui.compat import safe_fragment
 
 
 def render_content_tab(df):
@@ -32,7 +33,7 @@ def render_content_tab(df):
     _render_raw_data(df)
 
 
-@st.fragment
+@safe_fragment
 def _render_word_cloud(df):
     """Render word cloud with interactive controls using fragment for fast updates."""
     st.header("Word Cloud")
@@ -44,7 +45,7 @@ def _render_word_cloud(df):
             "Use the sliders to customize the visualization."
         )
 
-    # Interactive controls - these won't cause full page reload thanks to @st.fragment
+    # Interactive controls - these won't cause full page reload thanks to fragment
     col1, col2 = st.columns(2)
 
     with col1:

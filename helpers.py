@@ -91,7 +91,7 @@ def get_language_settings(selected_lang: str):
             "sticker": "Çıkartma dahil edilmedi",
             "deleted": ["Bu mesaj silindi.", "Bu mesajı sildiniz."],
             "location": "Konum https://",
-            "media": "<Medya dahil edilmedi>"
+            "media": "<görüntü dahil edilmedi>"
         },
         "German": {
             "image": "Bild weggelassen",

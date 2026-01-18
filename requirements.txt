@@ -1,15 +1,28 @@
-altair==5.1.2
-calmap==0.0.9
-chat-miner==0.6.0
-numpy==1.24.2
-pandas==1.5.3
-scikit-learn==1.2.1
-scipy==1.10.0
-seaborn==0.12.2
-smmap==5.0.0
-streamlit==1.41.0
-tqdm==4.66.1
-geopy==2.4.0
-wordcloud==1.9.4
-streamlit-extras==0.5.0
-emoji==2.0.0
+# WhatsApp Chat Analyzer - Dependencies
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualization
+altair>=5.0.0
+seaborn>=0.12.0
+wordcloud>=1.9.0
+calmap>=0.0.9
+
+# WhatsApp parsing
+chat-miner>=0.6.0
+
+# Machine learning (for future features)
+scikit-learn>=1.2.0
+scipy>=1.10.0
+
+# Streamlit and extensions
+streamlit>=1.41.0
+streamlit-extras>=0.5.0
+
+# Utilities
+tqdm>=4.66.0
+geopy>=2.4.0
+emoji>=2.0.0
+smmap>=5.0.0

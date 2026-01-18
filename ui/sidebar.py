@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from whatsapp_analyzer.parsers import read_file
 from whatsapp_analyzer.preprocessors import SUPPORTED_LANGUAGES
+from ui.compat import safe_toast, safe_status, safe_link_button, safe_dialog
 
 
 def render_sidebar():
@@ -70,7 +71,7 @@ def _render_upload_section():
 
         # Only process if file changed
         if file_hash != st.session_state.get('file_hash'):
-            with st.status("Processing file...", expanded=True) as status:
+            with safe_status("Processing file...", expanded=True) as status:
                 status.update(label="Reading file...")
                 df = read_file(file)
 
@@ -88,7 +89,7 @@ def _render_upload_section():
 
                 status.update(label="File uploaded!", state="complete")
 
-            st.toast("File uploaded successfully!")
+            safe_toast("File uploaded successfully!")
 
     # Sample data download
     st.download_button(
@@ -206,14 +207,14 @@ def _render_info_section():
             _show_help_dialog()
 
     # GitHub sponsor link
-    st.link_button(
+    safe_link_button(
         "Sponsor on GitHub",
         "https://github.com/sponsors/koftezz",
         use_container_width=True
     )
 
 
-@st.dialog("About WhatsApp Chat Analyzer")
+@safe_dialog("About WhatsApp Chat Analyzer")
 def _show_about_dialog():
     """Show the about dialog."""
     st.markdown("""
@@ -236,13 +237,13 @@ def _show_about_dialog():
     - [Dinesh Vatvani](https://dvatvani.github.io/whatsapp-analysis.html) for inspiration
     """)
 
-    st.link_button(
+    safe_link_button(
         "View Source on GitHub",
         "https://github.com/koftezz/whatsapp-chat-analyzer"
     )
 
 
-@st.dialog("How to Use")
+@safe_dialog("How to Use")
 def _show_help_dialog():
     """Show the help dialog."""
     st.markdown("""

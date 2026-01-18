@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from ui.sidebar import render_sidebar
 from ui.tabs import render_tabs
+from ui.compat import safe_status, safe_toast
 from whatsapp_analyzer.preprocessors import preprocess_data
 
 # Page configuration
@@ -68,7 +69,7 @@ def main():
 
 def _run_analysis(config):
     """Run the analysis pipeline and store results."""
-    with st.status("Analyzing your chat...", expanded=True) as status:
+    with safe_status("Analyzing your chat...", expanded=True) as status:
         status.update(label="Preprocessing data...")
 
         df, locations = preprocess_data(
@@ -83,7 +84,7 @@ def _run_analysis(config):
 
         status.update(label="Analysis complete!", state="complete")
 
-    st.toast("Analysis complete!", icon="✅")
+    safe_toast("Analysis complete!")
 
     # Show the analysis
     _show_analysis()

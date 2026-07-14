@@ -1,1 +1,1 @@
-"""Tests for parser modules."""
+"""Tests for chat export parsers."""

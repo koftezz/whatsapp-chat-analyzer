@@ -1,6 +1,6 @@
 # WhatsApp Chat Analyzer
 
-A Streamlit app that analyzes your WhatsApp chat exports. Check it out [here](https://whats-chat-detective.streamlit.app/)!
+A Streamlit app that analyzes WhatsApp and Signal chat exports. Check it out [here](https://whats-chat-detective.streamlit.app/)!
 
 ## Features
 
@@ -44,7 +44,7 @@ Each language has full support for detecting:
 
 ## Usage
 
-1. Export your chat from WhatsApp (without media)
+1. Export your chat from WhatsApp (without media), or export a Signal conversation with `sigtop msg`
 2. Upload the `.txt` file
 3. Select participants to analyze
 4. Choose your WhatsApp language

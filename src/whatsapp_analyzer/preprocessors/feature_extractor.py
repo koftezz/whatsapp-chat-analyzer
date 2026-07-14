@@ -5,6 +5,7 @@ Feature extraction utilities for WhatsApp chat data.
 import numpy as np
 import pandas as pd
 from typing import Tuple
+from urllib.parse import parse_qs, urlparse
 
 
 def add_conversation_starter_flag(df: pd.DataFrame) -> pd.DataFrame:
@@ -39,25 +40,42 @@ def process_locations(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     df = df.copy()
     df["is_location"] = df.message.str.contains('maps.google', na=False).astype(int)
-    locations = df.loc[df["is_location"] == 1].copy()
+    location_messages = df.loc[df["is_location"] == 1, "message"].copy()
     df.loc[df.is_location == 1, 'message'] = np.nan
 
-    if locations.shape[0] > 0:
-        locs = locations["message"].str.split(" ", expand=True)
-        locs[1] = locs[1].str[27:]
-        locs = locs[1].str.split(",", expand=True)
-        locs = locs.rename(columns={0: "lat", 1: "lon"})
-        locs = locs.loc[
-            (locs["lat"] != "") &
-            (locs["lon"] != "") &
-            (~locs["lat"].isna()) &
-            (~locs["lon"].isna())
-        ]
-        locations = locs[["lat", "lon"]].astype(float).drop_duplicates()
-    else:
-        locations = pd.DataFrame(columns=["lat", "lon"])
+    coordinates = []
+    for message in location_messages:
+        coordinate = _extract_google_maps_coordinates(message)
+        if coordinate is not None:
+            coordinates.append(coordinate)
+
+    locations = pd.DataFrame(coordinates, columns=["lat", "lon"]).drop_duplicates()
 
     return df, locations
+
+
+def _extract_google_maps_coordinates(message: str):
+    """Extract validated coordinates from a Google Maps URL, if present."""
+    for raw_url in str(message).split():
+        url = raw_url.rstrip(".,;!?)")
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        if hostname != "maps.google.com" and not hostname.startswith("maps.google."):
+            continue
+
+        query = parse_qs(parsed.query)
+        value = next(iter(query.get("q", query.get("query", []))), None)
+        if value is None:
+            continue
+
+        try:
+            latitude, longitude = (float(part.strip()) for part in value.split(",", 1))
+        except (TypeError, ValueError):
+            continue
+        if -90 <= latitude <= 90 and -180 <= longitude <= 180:
+            return latitude, longitude
+
+    return None
 
 
 def process_links(df: pd.DataFrame) -> pd.DataFrame:

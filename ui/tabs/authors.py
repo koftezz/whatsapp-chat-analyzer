@@ -19,6 +19,8 @@ from whatsapp_analyzer.analyzers import (
     analyze_response_time,
     response_matrix,
     find_longest_consecutive_streak,
+    calculate_conversation_balance,
+    get_balance_description,
 )
 from whatsapp_analyzer.visualizations import create_message_count_chart
 
@@ -40,6 +42,11 @@ def render_authors_tab(df):
 
     # Talkativeness & Trends
     _render_talkativeness(df)
+
+    st.divider()
+
+    # Conversation Balance
+    _render_conversation_balance(df)
 
     st.divider()
 
@@ -75,6 +82,73 @@ def _render_talkativeness(df):
 
     author_df = trend_stats(df)
     st.dataframe(author_df, use_container_width=True)
+
+
+def _render_conversation_balance(df):
+    """Render conversation balance analysis."""
+    st.header("Conversation Balance")
+
+    with st.expander("About this analysis"):
+        st.write(
+            "Measures how balanced the conversation is between participants. "
+            "Shows each person's share of messages, words, and conversation starts. "
+            "Balance score closer to 0 means more equal participation; closer to 1 means one person dominates."
+        )
+
+    balance_result = calculate_conversation_balance(df)
+    
+    # Show key metrics
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "Balance Score",
+            f"{balance_result['balance_score']:.2f}",
+            help="0 = perfectly balanced, 1 = monopoly"
+        )
+    
+    with col2:
+        if balance_result['n_authors'] == 2:
+            st.metric(
+                "More Active",
+                balance_result['dominant_author']
+            )
+        else:
+            st.metric(
+                "Participants",
+                balance_result['n_authors']
+            )
+    
+    with col3:
+        description = get_balance_description(
+            balance_result['balance_score'],
+            balance_result['n_authors']
+        )
+        st.info(description)
+    
+    # Show detailed metrics table
+    st.subheader("Participation Shares")
+    display_df = balance_result['metrics_df'][
+        ['author', 'messages', 'words', 'starters', 'message_share', 'word_share', 'starter_share']
+    ].copy()
+    
+    # Format as styled dataframe
+    format_dict = {
+        'messages': '{:,.0f}',
+        'words': '{:,.0f}',
+        'starters': '{:,.0f}',
+        'message_share': '{:.1f}%',
+        'word_share': '{:.1f}%',
+        'starter_share': '{:.1f}%'
+    }
+    
+    display_df.columns = ['Author', 'Messages', 'Words', 'Conv. Starts', 
+                          'Msg %', 'Word %', 'Start %']
+    
+    st.dataframe(display_df, use_container_width=True)
+    
+    # Show chart
+    st.altair_chart(balance_result['chart'], use_container_width=True)
 
 
 def _render_message_counts(df):

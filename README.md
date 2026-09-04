@@ -26,6 +26,8 @@ A Streamlit app that analyzes your WhatsApp chat exports. Check it out [here](ht
 - Response time analysis
 - Consecutive message streaks
 - Conversation starter detection
+- **Conversation balance** - Measures how balanced conversations are between participants (new!)
+- **Chronotype profiles** - Classifies authors as night owls vs early birds based on messaging hours (new!)
 
 ## Privacy
 

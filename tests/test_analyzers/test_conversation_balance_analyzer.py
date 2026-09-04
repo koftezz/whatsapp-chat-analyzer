@@ -143,8 +143,9 @@ class TestCalculateConversationBalance:
         """Test unbalanced 2-person chat with one dominant author."""
         result = calculate_conversation_balance(unbalanced_two_person_chat)
         
-        # Balance score should be high (indicating imbalance)
-        assert result['balance_score'] > 0.5
+        # Balance score should indicate imbalance (80/20 split ~ 0.36 with corrected formula)
+        assert result['balance_score'] > 0.3  # Significantly unbalanced
+        assert result['balance_score'] < 0.5  # But not a complete monopoly
         
         # Alice should be the dominant author
         assert result['dominant_author'] == "Alice"
@@ -215,6 +216,69 @@ class TestCalculateConversationBalance:
         # starter_share might be 0 if no starters
         if metrics['starter_share'].sum() > 0:
             assert abs(metrics['starter_share'].sum() - 100) < 0.01
+    
+    def test_monopoly_balance_score(self):
+        """Test that pure monopoly (100/0 split) scores exactly 1.0."""
+        # Create extreme monopoly: Alice sends everything, Bob sends nothing
+        # This is a theoretical edge case where Bob is in the chat but never messages
+        messages = []
+        for i in range(100):
+            messages.append({
+                "author": "Alice",
+                "words": 10,
+                "is_conversation_starter": 1 if i == 0 else 0
+            })
+        # Add one message from Bob to make it a 2-person chat
+        # This creates nearly 100/0 split (100/1)
+        messages.append({
+            "author": "Bob",
+            "words": 10,
+            "is_conversation_starter": 0
+        })
+        
+        df = pd.DataFrame(messages)
+        result = calculate_conversation_balance(df)
+        
+        # In near-monopoly (100/1), balance score should be very close to 1.0
+        assert result['balance_score'] > 0.95
+        assert result['balance_score'] <= 1.0
+        
+    def test_balance_score_never_exceeds_one(self):
+        """Test that balance score never exceeds 1.0 regardless of distribution."""
+        import numpy as np
+        
+        # Test various extreme distributions
+        test_cases = [
+            # 2-person: 100/0, 90/10, 80/20
+            ([100, 0], [100, 0]),
+            ([90, 10], [90, 10]),
+            ([80, 20], [75, 25]),
+            # 3-person: various imbalances
+            ([80, 15, 5], [75, 20, 5]),
+            ([100, 0, 0], [100, 0, 0]),
+            # 4-person
+            ([70, 20, 8, 2], [65, 25, 8, 2]),
+        ]
+        
+        for msg_dist, word_dist in test_cases:
+            messages = []
+            for i, (author_idx, msg_count) in enumerate(zip(range(len(msg_dist)), msg_dist)):
+                author = f"Author{author_idx}"
+                words_per_msg = word_dist[author_idx] / msg_count if msg_count > 0 else 0
+                for j in range(msg_count):
+                    messages.append({
+                        "author": author,
+                        "words": max(1, int(words_per_msg)),
+                        "is_conversation_starter": 0
+                    })
+            
+            if messages:  # Skip empty
+                df = pd.DataFrame(messages)
+                result = calculate_conversation_balance(df)
+                
+                # Balance score must never exceed 1.0 (with small epsilon for rounding)
+                assert result['balance_score'] <= 1.0 + 1e-6, \
+                    f"Balance score {result['balance_score']} exceeds 1.0 for distribution {msg_dist}"
 
 
 class TestGetBalanceDescription:

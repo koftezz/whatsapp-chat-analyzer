@@ -102,15 +102,17 @@ def _render_chronotype_analysis(df):
     st.subheader("Chronotype Scores")
     
     display_df = chronotype_result['scores_df'].copy()
+    
+    # Sort by numeric score (most early bird first) BEFORE formatting
+    display_df = display_df.sort_values('score', ascending=False).reset_index(drop=True)
+    
+    # Now format for display
     display_df['peak_hour_label'] = display_df['peak_hour'].apply(get_peak_hour_label)
     display_df['score_display'] = display_df['score'].apply(lambda x: f"{x:.2f}")
     
     # Reorder and rename columns for display
     display_df = display_df[['author', 'classification', 'score_display', 'peak_hour_label']]
     display_df.columns = ['Author', 'Type', 'Score', 'Peak Hour']
-    
-    # Sort by score (most early bird first)
-    display_df = display_df.sort_values('Score', ascending=False).reset_index(drop=True)
     
     st.dataframe(display_df, use_container_width=True)
     

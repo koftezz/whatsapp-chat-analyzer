@@ -132,16 +132,6 @@ def _render_conversation_balance(df):
         ['author', 'messages', 'words', 'starters', 'message_share', 'word_share', 'starter_share']
     ].copy()
     
-    # Format as styled dataframe
-    format_dict = {
-        'messages': '{:,.0f}',
-        'words': '{:,.0f}',
-        'starters': '{:,.0f}',
-        'message_share': '{:.1f}%',
-        'word_share': '{:.1f}%',
-        'starter_share': '{:.1f}%'
-    }
-    
     display_df.columns = ['Author', 'Messages', 'Words', 'Conv. Starts', 
                           'Msg %', 'Word %', 'Start %']
     

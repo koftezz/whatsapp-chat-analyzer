@@ -143,14 +143,6 @@ def _create_chronotype_chart(hourly_dist: pd.DataFrame, scores_df: pd.DataFrame)
         title='Message Activity by Hour (Chronotype Profiles)'
     )
     
-    # Add shaded regions for time periods
-    regions = pd.DataFrame({
-        'start': [0, 5, 12, 18, 22],
-        'end': [5, 12, 18, 22, 24],
-        'label': ['Night', 'Morning', 'Afternoon', 'Evening', 'Night'],
-        'color': ['#1e3a8a', '#f59e0b', '#10b981', '#6366f1', '#1e3a8a']
-    })
-    
     return line_chart
 
 
@@ -166,9 +158,6 @@ def get_chronotype_summary(scores_df: pd.DataFrame) -> str:
     """
     if len(scores_df) == 0:
         return "No data to analyze"
-    
-    # Count classifications
-    classification_counts = scores_df['classification'].value_counts()
     
     # Find extremes
     most_early = scores_df.loc[scores_df['score'].idxmax()]

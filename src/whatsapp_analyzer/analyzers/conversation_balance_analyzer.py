@@ -1,7 +1,8 @@
 """
 Conversation balance analysis for WhatsApp chat data.
 
-Measures how balanced (or one-sided) conversations are between participants.
+Measures how balanced (or one-sided) conversations are between participants
+using normalized variance from equal share.
 """
 
 import pandas as pd
@@ -69,9 +70,9 @@ def calculate_conversation_balance(df: pd.DataFrame) -> dict:
     else:
         metrics['starter_share'] = 0
     
-    # Calculate balance score using Herfindahl-style concentration
+    # Calculate balance score using normalized variance from equal share
     # This measures how far from equal distribution we are
-    # Score of 0 = perfectly balanced, score approaching 1 = monopoly
+    # Score of 0 = perfectly balanced, score of 1 = monopoly (one author has 100%)
     n_authors = len(metrics)
     if n_authors > 1:
         equal_share = 100 / n_authors
@@ -79,7 +80,8 @@ def calculate_conversation_balance(df: pd.DataFrame) -> dict:
         combined_share = (metrics['message_share'] * 0.6 + metrics['word_share'] * 0.4)
         # Normalize to 0-1 scale where 0=perfect balance, 1=monopoly
         variance = ((combined_share - equal_share) ** 2).sum()
-        max_variance = (n_authors - 1) * equal_share ** 2
+        # Max variance occurs when one author has 100% and others have 0%
+        max_variance = n_authors * (n_authors - 1) * equal_share ** 2
         balance_score = variance / max_variance if max_variance > 0 else 0
     else:
         balance_score = 0  # Single author = no balance to measure

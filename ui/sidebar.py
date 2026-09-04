@@ -14,7 +14,7 @@ import streamlit as st
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from whatsapp_analyzer.parsers import read_file
+from whatsapp_analyzer.parsers import read_file, ParseError
 from whatsapp_analyzer.preprocessors import SUPPORTED_LANGUAGES
 from ui.compat import safe_toast, safe_status, safe_link_button, safe_dialog
 
@@ -71,25 +71,40 @@ def _render_upload_section():
 
         # Only process if file changed
         if file_hash != st.session_state.get('file_hash'):
-            with safe_status("Processing file...", expanded=True) as status:
-                status.update(label="Reading file...")
-                df = read_file(file)
+            try:
+                with safe_status("Processing file...", expanded=True) as status:
+                    status.update(label="Reading file...")
+                    df = read_file(file)
 
-                status.update(label="Preparing data...")
-                df["timestamp"] = pd.to_datetime(df["timestamp"])
-                df = df.sort_values("timestamp")
-                # Skip first three entries (typically group creation messages)
-                df = df[3:]
+                    status.update(label="Preparing data...")
+                    df["timestamp"] = pd.to_datetime(df["timestamp"])
+                    df = df.sort_values("timestamp")
+                    # Skip first three entries (typically group creation messages)
+                    df = df[3:]
 
-                # Store in session state
-                st.session_state.raw_data = df
-                st.session_state.file_hash = file_hash
-                st.session_state.processed_data = None  # Clear old processed data
-                st.session_state.locations = None
+                    # Store in session state
+                    st.session_state.raw_data = df
+                    st.session_state.file_hash = file_hash
+                    st.session_state.processed_data = None  # Clear old processed data
+                    st.session_state.locations = None
 
-                status.update(label="File uploaded!", state="complete")
+                    status.update(label="File uploaded!", state="complete")
 
-            safe_toast("File uploaded successfully!")
+                safe_toast("File uploaded successfully!")
+            except ParseError as e:
+                st.error(f"**Error loading file:**\n\n{str(e)}")
+                # Clear any partial data
+                st.session_state.raw_data = None
+                st.session_state.file_hash = None
+            except Exception as e:
+                st.error(
+                    f"**Unexpected error:**\n\n{str(e)}\n\n"
+                    "Please report this issue at: "
+                    "https://github.com/koftezz/whatsapp-chat-analyzer/issues"
+                )
+                # Clear any partial data
+                st.session_state.raw_data = None
+                st.session_state.file_hash = None
 
     # Sample data download
     st.download_button(

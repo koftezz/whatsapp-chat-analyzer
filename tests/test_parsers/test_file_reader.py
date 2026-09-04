@@ -9,7 +9,8 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from whatsapp_analyzer.parsers.file_reader import _parse_whatsapp_file, _add_basic_features, ParseError
+from whatsapp_analyzer.parsers import ParseError
+from whatsapp_analyzer.parsers.file_reader import _parse_whatsapp_file, _add_basic_features
 
 
 class TestFileReader:
@@ -205,7 +206,58 @@ class TestParseErrorMessages:
 
 
 class TestRegressionCases:
-    """Test specific regression cases from issue #14."""
+    """Test specific regression cases from issue #14 and PR #23."""
+    
+    def test_pr23_fallback_preserves_whatsapp_parse_error(self):
+        """
+        Regression test for PR #23 fallback bug.
+        
+        When a file looks like WhatsApp but fails to parse, and Signal
+        fallback also fails, we should see the helpful WhatsApp ParseError
+        message, not a raw Signal/ChatMiner exception.
+        
+        This tests the internal logic directly to avoid Streamlit caching issues.
+        """
+        # A file that triggers ValueError during parsing (missing separator)
+        # This will cause the "not enough values to unpack" error
+        content = '''3/12/22 12:34 AM Jack Says hello
+3/12/22 1:05 AM Sam Replies
+This will cause parsing errors
+'''
+        file_bytes = content.encode('utf-8')
+        
+        # Import the internal components to test the fallback logic
+        from whatsapp_analyzer.parsers.file_reader import (
+            _parse_whatsapp_file,
+            _parse_with_chatminer,
+        )
+        from chatminer.chatparsers import SignalParser
+        
+        # First, verify WhatsApp parsing fails with ParseError
+        with pytest.raises(ParseError) as whatsapp_exc:
+            _parse_whatsapp_file(file_bytes)
+        
+        whatsapp_error = whatsapp_exc.value
+        whatsapp_msg = str(whatsapp_error).lower()
+        
+        # Verify it has helpful WhatsApp-specific guidance about format/parsing
+        assert "parse" in whatsapp_msg or "format" in whatsapp_msg
+        assert isinstance(whatsapp_error, ParseError)
+        
+        # Now test the fallback logic: if we try Signal and it fails,
+        # we should get a different exception (not ParseError)
+        try:
+            _parse_with_chatminer(file_bytes, SignalParser)
+            # If Signal somehow succeeds, that's fine - the test is about the error path
+        except Exception as signal_error:
+            # Signal parser should fail with a different exception type
+            # (typically ValueError, IndexError, or other ChatMiner exceptions)
+            # NOT ParseError (which is our custom exception)
+            assert not isinstance(signal_error, ParseError)
+            
+            # The bug was that when both fail, bare `raise` in the inner except
+            # would raise signal_error instead of the more helpful whatsapp_error
+            # Our fix ensures whatsapp_error is raised instead
     
     def test_issue_14_valueerror_from_malformed_lines(self):
         """

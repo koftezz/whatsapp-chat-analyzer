@@ -2,7 +2,8 @@
 
 from datetime import datetime
 
-from whatsapp_analyzer.parsers.file_reader import _add_basic_features, parse_sigtop_text
+from whatsapp_analyzer.parsers import parse_sigtop_text
+from whatsapp_analyzer.parsers.file_reader import _add_basic_features
 
 
 def test_parse_sigtop_multiline_messages_and_ignore_metadata():

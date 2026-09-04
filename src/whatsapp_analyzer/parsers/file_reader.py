@@ -271,14 +271,14 @@ def read_file(file) -> pd.DataFrame:
             # Try WhatsApp parser with detailed error messages
             try:
                 df = _parse_whatsapp_file(bytes_data)
-            except ParseError:
+            except ParseError as whatsapp_error:
                 # If WhatsApp parsing fails with a ParseError, try Signal as fallback
                 try:
                     df = _parse_with_chatminer(bytes_data, SignalParser)
                 except Exception:
                     # If Signal also fails, re-raise the original WhatsApp ParseError
                     # as it has more helpful error messages for the user
-                    raise
+                    raise whatsapp_error from None
         
         # Add basic features to the parsed data
         df = _add_basic_features(df)

@@ -43,6 +43,23 @@ def _parse_whatsapp_file(file_bytes: bytes) -> pd.DataFrame:
                 parser = WhatsAppParser(temp.name)
                 parser.parse_file()
                 df = parser.parsed_messages.get_df(as_pandas=True)
+            except ValueError as e:
+                # Specific handling for split/unpack errors during parsing
+                if "not enough values to unpack" in str(e) or "unpack" in str(e).lower():
+                    raise ParseError(
+                        "Could not parse the WhatsApp export format. "
+                        "This usually happens when:\n"
+                        "- The file is from a different WhatsApp version or platform\n"
+                        "- The export format doesn't match the expected pattern\n"
+                        "- Some message lines are corrupted or improperly formatted\n\n"
+                        "Expected format: `MM/DD/YY, HH:MM AM/PM - Author: Message`\n\n"
+                        "Please try:\n"
+                        "1. Export the chat again from WhatsApp\n"
+                        "2. Ensure you're using 'Export Chat' (not a copy/paste)\n"
+                        "3. Check that the file isn't edited or modified"
+                    )
+                # Re-raise other ValueErrors with context
+                raise ParseError(f"Error parsing message format: {str(e)}")
             except IndexError:
                 raise ParseError(
                     "Could not parse any messages from the file. "

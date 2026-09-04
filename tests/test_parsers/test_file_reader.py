@@ -95,6 +95,21 @@ With no date stamps
         
         assert "could not parse" in str(exc_info.value).lower()
     
+    def test_malformed_message_line_raises_error(self):
+        """Test that malformed message lines (missing separator) raise ParseError."""
+        # This triggers ValueError: not enough values to unpack
+        content = '''3/12/22, 12:34 AM - Jack: Normal message
+3/12/22 12:35 AM Jack Missing separator
+3/12/22, 12:36 AM - Sam: Another message
+'''
+        file_bytes = content.encode('utf-8')
+        
+        with pytest.raises(ParseError) as exc_info:
+            _parse_whatsapp_file(file_bytes)
+        
+        error_msg = str(exc_info.value).lower()
+        assert "format" in error_msg or "pattern" in error_msg
+    
     def test_file_with_special_characters(self):
         """Test reading a file with emojis and special characters."""
         content = '''3/12/22, 12:34 AM - Jack: Hello 👋 🎉
@@ -189,6 +204,29 @@ class TestParseErrorMessages:
 
 class TestRegressionCases:
     """Test specific regression cases from issue #14."""
+    
+    def test_issue_14_valueerror_from_malformed_lines(self):
+        """
+        Regression test for issue #14 - the actual error from the screenshot.
+        
+        Original error: ValueError: not enough values to unpack (expected 2, got 1)
+        This occurs when a line looks like a message but lacks the ' - ' separator.
+        """
+        content = '''3/12/22, 12:34 AM - Jack: Valid message
+3/12/22 12:35 AM Jack Invalid line missing separator
+3/12/22, 12:36 AM - Sam: Another valid message
+'''
+        file_bytes = content.encode('utf-8')
+        
+        # Should raise ParseError (not raw ValueError)
+        with pytest.raises(ParseError) as exc_info:
+            _parse_whatsapp_file(file_bytes)
+        
+        error_msg = str(exc_info.value)
+        # Should explain the format issue
+        assert "format" in error_msg.lower()
+        # Should provide guidance
+        assert "export" in error_msg.lower() or "pattern" in error_msg.lower()
     
     def test_issue_14_multiline_messages_dont_crash(self):
         """

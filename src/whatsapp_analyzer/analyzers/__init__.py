@@ -37,6 +37,15 @@ from whatsapp_analyzer.analyzers.content_analyzer import (
     extract_emojis,
     analyze_monthly_messages,
 )
+from whatsapp_analyzer.analyzers.conversation_balance_analyzer import (
+    calculate_conversation_balance,
+    get_balance_description,
+)
+from whatsapp_analyzer.analyzers.chronotype_analyzer import (
+    calculate_chronotype_scores,
+    get_chronotype_summary,
+    get_peak_hour_label,
+)
 
 __all__ = [
     "basic_stats",
@@ -65,4 +74,9 @@ __all__ = [
     "get_most_used_emoji",
     "extract_emojis",
     "analyze_monthly_messages",
+    "calculate_conversation_balance",
+    "get_balance_description",
+    "calculate_chronotype_scores",
+    "get_chronotype_summary",
+    "get_peak_hour_label",
 ]

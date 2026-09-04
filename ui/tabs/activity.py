@@ -17,6 +17,9 @@ from whatsapp_analyzer.analyzers import (
     activity_time_of_day_ts,
     activity_day_of_week_ts,
     heatmap,
+    calculate_chronotype_scores,
+    get_chronotype_summary,
+    get_peak_hour_label,
 )
 
 
@@ -25,6 +28,11 @@ def render_activity_tab(df):
 
     # Message Volume Trends
     _render_volume_trends(df)
+
+    st.divider()
+
+    # Chronotype Analysis
+    _render_chronotype_analysis(df)
 
     st.divider()
 
@@ -70,6 +78,46 @@ def _render_volume_trends(df):
 
         relative_df = relative_activity_ts(df, years=3)
         st.area_chart(relative_df)
+
+
+def _render_chronotype_analysis(df):
+    """Render chronotype (night owl vs early bird) analysis."""
+    st.header("Night Owl vs Early Bird Profiles")
+
+    with st.expander("About this analysis"):
+        st.write(
+            "Classifies each participant based on their messaging hours. "
+            "Early birds are most active in the morning (5am-noon), "
+            "night owls prefer late hours (10pm-4am). "
+            "Score ranges from -1 (extreme night owl) to +1 (extreme early bird)."
+        )
+
+    chronotype_result = calculate_chronotype_scores(df)
+    
+    # Show summary
+    summary = get_chronotype_summary(chronotype_result['scores_df'])
+    st.info(summary)
+    
+    # Show detailed scores table
+    st.subheader("Chronotype Scores")
+    
+    display_df = chronotype_result['scores_df'].copy()
+    
+    # Sort by numeric score (most early bird first) BEFORE formatting
+    display_df = display_df.sort_values('score', ascending=False).reset_index(drop=True)
+    
+    # Now format for display
+    display_df['peak_hour_label'] = display_df['peak_hour'].apply(get_peak_hour_label)
+    display_df['score_display'] = display_df['score'].apply(lambda x: f"{x:.2f}")
+    
+    # Reorder and rename columns for display
+    display_df = display_df[['author', 'classification', 'score_display', 'peak_hour_label']]
+    display_df.columns = ['Author', 'Type', 'Score', 'Peak Hour']
+    
+    st.dataframe(display_df, use_container_width=True)
+    
+    # Show hourly distribution chart
+    st.altair_chart(chronotype_result['chart'], use_container_width=True)
 
 
 def _render_time_of_day(df):

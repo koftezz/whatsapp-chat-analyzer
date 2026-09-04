@@ -9,7 +9,7 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from whatsapp_analyzer.parsers.file_reader import _parse_whatsapp_file, ParseError
+from whatsapp_analyzer.parsers.file_reader import _parse_whatsapp_file, _add_basic_features, ParseError
 
 
 class TestFileReader:
@@ -24,6 +24,7 @@ class TestFileReader:
         file_bytes = content.encode('utf-8')
         
         df = _parse_whatsapp_file(file_bytes)
+        df = _add_basic_features(df)
         
         assert len(df) == 3
         assert 'timestamp' in df.columns
@@ -148,6 +149,7 @@ With no date stamps
         file_bytes = content.encode('utf-8')
         
         df = _parse_whatsapp_file(file_bytes)
+        df = _add_basic_features(df)
         
         # Check weekday is present (we don't assert specific value as it depends on date interpretation)
         assert df['weekday'].notna().all()
